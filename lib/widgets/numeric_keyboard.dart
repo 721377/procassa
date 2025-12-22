@@ -68,7 +68,7 @@ class NumericKeypad extends StatelessWidget {
               ),
               Expanded(
                 child: _buildSpecialKey(
-                  label: 'Qtà',
+                  label: 'X',
                   backgroundColor: const Color(0xFFDEF7EC),
                   textColor: const Color(0xFF059669),
                   onTap: onXTap,

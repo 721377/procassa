@@ -414,37 +414,38 @@ class StatisticheScreen extends StatelessWidget {
     );
   }
 
-  List<Widget> _buildTopProducts() {
-    final products = [
-      {
-        'name': 'Beef Croissant',
-        'quantity': 45,
-        'revenue': '€247.50',
-        'growth': '+12%',
-        'color': const Color(0xFF3B82F6),
-      },
-      {
-        'name': 'Butter Croissant',
-        'quantity': 38,
-        'revenue': '€152.00',
-        'growth': '+8%',
-        'color': const Color(0xFF10B981),
-      },
-      {
-        'name': 'Chocolate Muffin',
-        'quantity': 32,
-        'revenue': '€112.00',
-        'growth': '+15%',
-        'color': const Color(0xFF8B5CF6),
-      },
-      {
-        'name': 'Club Sandwich',
-        'quantity': 28,
-        'revenue': '€182.00',
-        'growth': '+5%',
-        'color': const Color(0xFFF59E0B),
-      },
-    ];
+List<Widget> _buildTopProducts() {
+  final products = [
+    {
+      'name': 'Espresso',
+      'quantity': 45,
+      'revenue': '€90.00',
+      'growth': '+12%',
+      'color': const Color(0xFF3B82F6),
+    },
+    {
+      'name': 'Cappuccino',
+      'quantity': 38,
+      'revenue': '€152.00',
+      'growth': '+8%',
+      'color': const Color(0xFF10B981),
+    },
+    {
+      'name': 'Butter Croissant',
+      'quantity': 32,
+      'revenue': '€96.00',
+      'growth': '+15%',
+      'color': const Color(0xFF8B5CF6),
+    },
+    {
+      'name': 'Chocolate Muffin',
+      'quantity': 28,
+      'revenue': '€112.00',
+      'growth': '+5%',
+      'color': const Color(0xFFF59E0B),
+    },
+  ];
+
 
     return products.map((product) {
       return Container(

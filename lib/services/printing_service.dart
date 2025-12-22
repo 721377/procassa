@@ -1026,50 +1026,50 @@ String _generateRefundXml({
   final headerMessage ='VOID $paddedZRepNumber $paddedFiscalReceiptNumber $formattedDate $serialNumber';
 
   // Calculate total refund amount from all items
-  double totalRefundAmount = 0.0;
+  // double totalRefundAmount = 0.0;
   
-  // Build printRecRefund elements for each item
-  String refundItemsXml = '';
-  for (final item in refundItems) {
-    final name = item['name'] as String? ?? 'Item';
-    final price = item['price'] as double? ?? 0.0;
-    final quantity = item['quantity'] as int? ?? 1;
+//   // Build printRecRefund elements for each item
+//   String refundItemsXml = '';
+//   for (final item in refundItems) {
+//     final name = item['name'] as String? ?? 'Item';
+//     final price = item['price'] as double? ?? 0.0;
+//     final quantity = item['quantity'] as int? ?? 1;
     
-    totalRefundAmount += (price * quantity);
+//     totalRefundAmount += (price * quantity);
     
-    final formattedQty = quantity.toStringAsFixed(3).replaceAll('.', ',');
-    final formattedPrice = price.toStringAsFixed(2).replaceAll('.', ',');
+//     final formattedQty = quantity.toStringAsFixed(3).replaceAll('.', ',');
+//     final formattedPrice = price.toStringAsFixed(2).replaceAll('.', ',');
 
-    refundItemsXml += '''
-      <printRecRefund operator="1" description="$name" quantity="$formattedQty" unitPrice="$formattedPrice" department="1" />
-''';
-  }
+//     refundItemsXml += '''
+//       <printRecRefund operator="1" description="$name" quantity="$formattedQty" unitPrice="$formattedPrice" department="1" />
+// ''';
+//   }
 
-  final formattedTotalAmount = totalRefundAmount.toStringAsFixed(2).replaceAll('.', ',');
+  // final formattedTotalAmount = totalRefundAmount.toStringAsFixed(2).replaceAll('.', ',');
 
-  String paymentTypeCode = '0';
-  String paymentDescription = 'CONTANTI';
-  String indexCode = '0';
+  // String paymentTypeCode = '0';
+  // String paymentDescription = 'CONTANTI';
+  // String indexCode = '0';
 
-  switch (paymentMethod.toUpperCase()) {
-    case 'CARTA':
-    case 'SATISPAY':
-      paymentTypeCode = '2';
-      paymentDescription = 'CARTA';
-      indexCode = '1';
-      break;
+  // switch (paymentMethod.toUpperCase()) {
+  //   case 'CARTA':
+  //   case 'SATISPAY':
+  //     paymentTypeCode = '2';
+  //     paymentDescription = 'CARTA';
+  //     indexCode = '1';
+  //     break;
 
-    case 'TICKET':
-      paymentTypeCode = '3';
-      paymentDescription = 'TICKET';
-      indexCode = '1';
-      break;
+  //   case 'TICKET':
+  //     paymentTypeCode = '3';
+  //     paymentDescription = 'TICKET';
+  //     indexCode = '1';
+  //     break;
 
-    default:
-      paymentTypeCode = '0';
-      paymentDescription = 'CONTANTI';
-      indexCode = '0';
-  }
+  //   default:
+  //     paymentTypeCode = '0';
+  //     paymentDescription = 'CONTANTI';
+  //     indexCode = '0';
+  // }
 
   return '''<?xml version="1.0" encoding="utf-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">

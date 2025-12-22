@@ -560,11 +560,9 @@ class _PosScreenState extends State<PosScreen> {
 
   int _calculateGridColumns() {
     if (_isSmallScreen) return 3;
-    if (_isMediumScreen) return 3;
-    if (_isLargeScreen) {
-      return _showCart ? 4 : 6;
-    }
-    return 4;
+    if (_isMediumScreen) return 4;
+    if (_isLargeScreen) return 6;
+    return 3;
   }
 
   void _navigateToAnagrafica() {
@@ -610,45 +608,70 @@ class _PosScreenState extends State<PosScreen> {
               )
             : null,
         title: _isSmallScreen
-            ? Container(
+            ? SizedBox(
                 height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF9FAFB),
-                  borderRadius: BorderRadius.circular(20),
-                ),
                 child: TextField(
                   controller: _searchController,
                   onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
+                  cursorColor: const Color(0xFF2D6FF1),
+                  decoration: InputDecoration(
                     hintText: 'Search...',
-                    hintStyle: TextStyle(color: Color(0xFF9CA3AF)),
-                    prefixIcon:
-                        Icon(Icons.search, color: Color(0xFF9CA3AF), size: 18),
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(
+                    hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
+                    prefixIcon: const Icon(Icons.search,
+                        color: Color(0xFF9CA3AF), size: 18),
+                    filled: true,
+                    fillColor: const Color(0xFFF9FAFB),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide:
+                          const BorderSide(color: Color(0xFF2D6FF1), width: 2),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
                       vertical: 8,
                       horizontal: 12,
                     ),
                   ),
                 ),
               )
-            : Expanded(
-                child: Container(
+            : Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: SizedBox(
                   height: 44,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF9FAFB),
-                    borderRadius: BorderRadius.circular(22),
-                  ),
                   child: TextField(
                     controller: _searchController,
                     onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(
+                    cursorColor: const Color(0xFF2D6FF1),
+                    decoration: InputDecoration(
                       hintText: 'Search products...',
-                      hintStyle: TextStyle(color: Color(0xFF9CA3AF)),
-                      prefixIcon: Icon(Icons.search,
+                      hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
+                      prefixIcon: const Icon(Icons.search,
                           color: Color(0xFF9CA3AF), size: 20),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(
+                      filled: true,
+                      fillColor: const Color(0xFFF9FAFB),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(22),
+                        borderSide:
+                            const BorderSide(color: Color(0xFFE5E7EB)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(22),
+                        borderSide:
+                            const BorderSide(color: Color(0xFFE5E7EB)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(22),
+                        borderSide: const BorderSide(
+                            color: Color(0xFF2D6FF1), width: 2),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
                         vertical: 8,
                         horizontal: 16,
                       ),
@@ -1079,150 +1102,74 @@ class _PosScreenState extends State<PosScreen> {
   }
 
   Widget _buildDesktopKeypadPanel() {
-    final isSmallScreen = _isSmallScreen;
-
-    return SingleChildScrollView(
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border(left: BorderSide(color: Colors.grey[300]!)),
-          color: Colors.white,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              margin: EdgeInsets.symmetric(
-                horizontal: isSmallScreen ? 12 : 16,
-                vertical: isSmallScreen ? 6 : 8,
-              ),
-              padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF9FAFB),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            'Qtà: ',
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 12 : 14,
-                              color: const Color(0xFF6B7280),
-                            ),
-                          ),
-                          Text(
-                            _keypadFirstNumber.isEmpty ? '0' : _keypadFirstNumber,
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 14 : 16,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF111827),
-                            ),
-                          ),
-                        ],
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(left: BorderSide(color: Colors.grey[300]!)),
+        color: Colors.white,
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border:
+                          Border.all(color: const Color(0xFFE5E7EB), width: 1),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    child: Center(
+                      child: Text(
+                        'Prezzo: ${_keypadFirstNumber.isEmpty ? '0' : _keypadFirstNumber}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF111827),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
-                      if (_keypadXPressed)
-                        Row(
-                          children: [
-                            Text(
-                              'Prezzo: ',
-                              style: TextStyle(
-                                fontSize: isSmallScreen ? 12 : 14,
-                                color: const Color(0xFF6B7280),
-                              ),
-                            ),
-                            Text(
-                              _keypadSecondNumber.isEmpty ? '0' : _keypadSecondNumber,
-                              style: TextStyle(
-                                fontSize: isSmallScreen ? 14 : 16,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFF111827),
-                              ),
-                            ),
-                          ],
-                        ),
-                      if (_keypadFirstNumber.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(
-                            'Tocca prodotto',
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 10 : 12,
-                              color: const Color(0xFF059669),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                    ],
+                    ),
                   ),
-                ],
-              ),
-            ),
-            if (_keypadFirstNumber.isNotEmpty)
-              Container(
-                margin: EdgeInsets.symmetric(
-                  horizontal: isSmallScreen ? 12 : 16,
-                  vertical: isSmallScreen ? 4 : 6,
                 ),
-                padding: EdgeInsets.symmetric(
-                  horizontal: isSmallScreen ? 10 : 12,
-                  vertical: isSmallScreen ? 4 : 6,
-                ),
-                decoration: BoxDecoration(
-                  color: _keypadXPressed
-                      ? const Color(0xFFDEF7EC).withOpacity(0.3)
-                      : const Color(0xFFFEF3C7).withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _keypadXPressed ? Icons.close : Icons.attach_money,
-                      size: isSmallScreen ? 12 : 14,
-                      color: _keypadXPressed
-                          ? const Color(0xFF059669)
-                          : const Color(0xFFD97706),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 5,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border:
+                          Border.all(color: const Color(0xFFE5E7EB), width: 1),
+                      borderRadius: BorderRadius.circular(3),
                     ),
-                    SizedBox(width: isSmallScreen ? 4 : 6),
-                    Text(
-                      _keypadXPressed ? 'Modalità Qtà' : 'Modalità Prezzo',
-                      style: TextStyle(
-                        fontSize: isSmallScreen ? 11 : 13,
-                        color: _keypadXPressed
-                            ? const Color(0xFF059669)
-                            : const Color(0xFFD97706),
-                        fontWeight: FontWeight.w500,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    child: Center(
+                      child: Text(
+                        _keypadXPressed
+                            ? 'Prezzo: ${_keypadSecondNumber.isEmpty ? '0' : _keypadSecondNumber}'
+                            : 'Qtà: ${_keypadFirstNumber.isEmpty ? '0' : _keypadFirstNumber}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF111827),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: isSmallScreen ? 12 : 16,
-                vertical: isSmallScreen ? 4 : 6,
-              ),
-              child: Text(
-                _keypadFirstNumber.isEmpty
-                    ? 'Inserisci Prezzo'
-                    : _keypadXPressed
-                        ? 'Inserisci Quantità'
-                        : 'Premi Qtà per aggiungere quantità',
-                style: TextStyle(
-                  fontSize: isSmallScreen ? 11 : 13,
-                  color: const Color(0xFF6B7280),
-                ),
-              ),
+              ],
             ),
-            Padding(
-              padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+          ),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.zero,
               child: NumericKeypad(
                 onNumberTap: _handleNumberInput,
                 onClear: _clearKeypad,
@@ -1230,8 +1177,8 @@ class _PosScreenState extends State<PosScreen> {
                 onXTap: _handleXPress,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1278,47 +1225,47 @@ class _PosScreenState extends State<PosScreen> {
             },
           ),
         ),
-
+        //ui/ux to display the cat details /dynamic price qta based on the key pad
         // Item Count and Mode Indicator
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '${filteredList.length} items',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF6B7280),
-                ),
-              ),
-              // if (_keypadModeActive)
-              //   Container(
-              //     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              //     decoration: BoxDecoration(
-              //       color: const Color(0xFF2D6FF1).withOpacity(0.1),
-              //       borderRadius: BorderRadius.circular(8),
-              //       border:
-              //           Border.all(color: const Color(0xFF2D6FF1).withOpacity(0.2)),
-              //     ),
-              //     // child: Row(
-              //     //   children: [
-              //     //     Icon(Icons.touch_app, size: 14, color: const Color(0xFF2D6FF1)),
-              //     //     const SizedBox(width: 6),
-              //     //     Text(
-              //     //       'Tap to apply',
-              //     //       style: const TextStyle(
-              //     //         fontSize: 12,
-              //     //         color: Color(0xFF2D6FF1),
-              //     //         fontWeight: FontWeight.w600,
-              //     //       ),
-              //     //     ),
-              //     //   ],
-              //     // ),
-              //   ),
-            ],
-          ),
-        ),
+        // Padding(
+        //   padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+        //   child: Row(
+        //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        //     children: [
+        //       Text(
+        //         '${filteredList.length} Articol${filteredList.length > 1 ? 'i' : 'o'}',
+        //         style: const TextStyle(
+        //           fontSize: 14,
+        //           color: Color(0xFF6B7280),
+        //         ),
+        //       ),
+        //       // if (_keypadModeActive)
+        //       //   Container(
+        //       //     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        //       //     decoration: BoxDecoration(
+        //       //       color: const Color(0xFF2D6FF1).withOpacity(0.1),
+        //       //       borderRadius: BorderRadius.circular(8),
+        //       //       border:
+        //       //           Border.all(color: const Color(0xFF2D6FF1).withOpacity(0.2)),
+        //       //     ),
+        //       //     // child: Row(
+        //       //     //   children: [
+        //       //     //     Icon(Icons.touch_app, size: 14, color: const Color(0xFF2D6FF1)),
+        //       //     //     const SizedBox(width: 6),
+        //       //     //     Text(
+        //       //     //       'Tap to apply',
+        //       //     //       style: const TextStyle(
+        //       //     //         fontSize: 12,
+        //       //     //         color: Color(0xFF2D6FF1),
+        //       //     //         fontWeight: FontWeight.w600,
+        //       //     //       ),
+        //       //     //     ),
+        //       //     //   ],
+        //       //     // ),
+        //       //   ),
+        //     ],
+        //   ),
+        // ),
 
         // Products Grid
         Expanded(
@@ -1347,8 +1294,7 @@ class _PosScreenState extends State<PosScreen> {
               : GridView.builder(
                   padding: const EdgeInsets.all(8),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount:
-                        _isSmallScreen ? 3 : 6, // keep your desired columns
+                    crossAxisCount: _calculateGridColumns(),
                     crossAxisSpacing: 4, 
                     mainAxisSpacing: 4,
                     childAspectRatio: _isSmallScreen ? 1.25 : 1.35,
