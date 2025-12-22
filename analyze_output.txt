@@ -1,0 +1,208 @@
+Analyzing procassa...                                           
+
+   info - Don't use 'BuildContext's across async gaps - lib\screens\articoli_screen.dart:421:21 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\screens\articoli_screen.dart:422:28 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\screens\articoli_screen.dart:436:28 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\screens\articoli_screen.dart:482:29 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\screens\articoli_screen.dart:483:36 - use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\articoli_screen.dart:603:43 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\articoli_screen.dart:618:54 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\screens\articoli_screen.dart:621:28 - prefer_const_constructors
+   info - Don't use 'BuildContext's across async gaps - lib\screens\categorie_screen.dart:186:19 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\screens\categorie_screen.dart:187:26 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\screens\categorie_screen.dart:236:29 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\screens\categorie_screen.dart:237:36 - use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\categorie_screen.dart:357:43 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\screens\impostazioni_screen.dart:132:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\impostazioni_screen.dart:133:22 - prefer_const_constructors
+   info - 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre - lib\screens\impostazioni_screen.dart:200:11 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\screens\impostazioni_screen.dart:248:18 - prefer_const_constructors
+   info - Don't use 'BuildContext's across async gaps - lib\screens\iva_screen.dart:244:19 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\screens\iva_screen.dart:245:26 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\screens\iva_screen.dart:292:29 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\screens\iva_screen.dart:293:36 - use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\iva_screen.dart:413:43 - deprecated_member_use
+warning - Unused import: 'categorie_screen.dart' - lib\screens\pos_screen.dart:11:8 - unused_import
+warning - Unused import: 'articoli_screen.dart' - lib\screens\pos_screen.dart:12:8 - unused_import
+warning - Unused import: 'statistiche_screen.dart' - lib\screens\pos_screen.dart:14:8 - unused_import
+warning - The value of the field '_keypadModeActive' isn't used - lib\screens\pos_screen.dart:41:8 - unused_field
+   info - The private field _selectedMenu could be 'final' - lib\screens\pos_screen.dart:42:10 - prefer_final_fields
+warning - The declaration '_addToCart' isn't referenced - lib\screens\pos_screen.dart:92:8 - unused_element
+warning - The declaration '_addToCartWithCustomPrice' isn't referenced - lib\screens\pos_screen.dart:98:8 - unused_element
+   info - Use 'const' with the constructor to improve performance - lib\screens\pos_screen.dart:253:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\pos_screen.dart:255:34 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\screens\pos_screen.dart:299:50 - prefer_const_literals_to_create_immutables
+   info - Use 'const' with the constructor to improve performance - lib\screens\pos_screen.dart:300:41 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\pos_screen.dart:303:51 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\pos_screen.dart:325:56 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\pos_screen.dart:334:56 - prefer_const_constructors
+warning - The declaration '_exitKeypadMode' isn't referenced - lib\screens\pos_screen.dart:548:8 - unused_element
+warning - The declaration '_calculateGridColumns' isn't referenced - lib\screens\pos_screen.dart:563:7 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\pos_screen.dart:1166:49 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\pos_screen.dart:1167:49 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\screens\pos_screen.dart:1313:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\pos_screen.dart:1314:26 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\screens\pos_screen.dart:1316:31 - prefer_const_literals_to_create_immutables
+   info - Use 'const' with the constructor to improve performance - lib\screens\pos_screen.dart:1317:23 - prefer_const_constructors
+   info - Unnecessary braces in a string interpolation - lib\screens\pos_screen.dart:1371:43 - unnecessary_brace_in_string_interps
+   info - Unnecessary braces in a string interpolation - lib\screens\pos_screen.dart:1371:66 - unnecessary_brace_in_string_interps
+   info - Unnecessary braces in a string interpolation - lib\screens\pos_screen.dart:1373:47 - unnecessary_brace_in_string_interps
+   info - Unnecessary braces in a string interpolation - lib\screens\pos_screen.dart:1375:43 - unnecessary_brace_in_string_interps
+   info - The private field _availableDevices could be 'final' - lib\screens\stampanti_screen.dart:27:25 - prefer_final_fields
+   info - Uses 'await' on an instance of 'List<BluetoothDevice>', which is not a subtype of 'Future' - lib\screens\stampanti_screen.dart:51:32 - await_only_futures
+   info - Don't invoke 'print' in production code - lib\screens\stampanti_screen.dart:70:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\screens\stampanti_screen.dart:73:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\screens\stampanti_screen.dart:123:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\screens\stampanti_screen.dart:139:15 - avoid_print
+   info - Don't invoke 'print' in production code - lib\screens\stampanti_screen.dart:145:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\screens\stampanti_screen.dart:156:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\screens\stampanti_screen.dart:162:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\screens\stampanti_screen.dart:168:7 - avoid_print
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\stampanti_screen.dart:262:31 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\screens\stampanti_screen.dart:727:29 - prefer_const_constructors
+warning - The declaration '_showBluetoothDeviceSelector' isn't referenced - lib\screens\stampanti_screen.dart:898:8 - unused_element
+   info - The local variable '_selectedTabIndex' starts with an underscore - lib\screens\stampanti_screen.dart:899:9 - no_leading_underscores_for_local_identifiers
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\stampanti_screen.dart:910:31 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\screens\stampanti_screen.dart:944:29 - prefer_const_constructors
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\screens\stampanti_screen.dart:1464:38 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\screens\stampanti_screen.dart:1655:35 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\screens\stampanti_screen.dart:1656:42 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\screens\stampanti_screen.dart:1671:42 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\screens\stampanti_screen.dart:1765:39 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\screens\stampanti_screen.dart:1766:46 - use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\stampanti_screen.dart:1922:45 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\stampanti_screen.dart:1937:56 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\statistiche_screen.dart:97:30 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\screens\statistiche_screen.dart:209:33 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\statistiche_screen.dart:210:23 - prefer_const_constructors
+warning - Unnecessary cast - lib\screens\transazioni_screen.dart:42:28 - unnecessary_cast
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\transazioni_screen.dart:329:35 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\transazioni_screen.dart:360:64 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\transazioni_screen.dart:550:48 - deprecated_member_use
+   info - The private field _isDiscovering could be 'final' - lib\services\printing_service.dart:16:8 - prefer_final_fields
+   info - The private field _localIp could be 'final' - lib\services\printing_service.dart:17:10 - prefer_final_fields
+   info - The private field _wifiName could be 'final' - lib\services\printing_service.dart:18:10 - prefer_final_fields
+   info - The private field _ethernetIp could be 'final' - lib\services\printing_service.dart:19:10 - prefer_final_fields
+   info - The private field _port could be 'final' - lib\services\printing_service.dart:20:7 - prefer_final_fields
+   info - Use 'const' for final variables initialized to a constant value - lib\services\printing_service.dart:39:7 - prefer_const_declarations
+   info - Unnecessary empty statement - lib\services\printing_service.dart:102:62 - empty_statements
+   info - Use 'const' for final variables initialized to a constant value - lib\services\printing_service.dart:153:7 - prefer_const_declarations
+   info - Use 'const' for final variables initialized to a constant value - lib\services\printing_service.dart:194:7 - prefer_const_declarations
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:212:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:225:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:239:38 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:253:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:258:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:266:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:271:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:281:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:290:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:318:19 - prefer_const_constructors
+warning - The value of the local variable 'padding' isn't used - lib\services\printing_service.dart:356:11 - unused_local_variable
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:389:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:403:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:420:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:425:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:433:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:438:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:446:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:451:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:463:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:474:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:493:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:507:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:521:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:526:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:531:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:551:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:556:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:567:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:572:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:581:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:586:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:595:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:600:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\services\printing_service.dart:615:15 - prefer_const_constructors
+   info - 'bindingPrinter' is deprecated and shouldn't be used. This method will be removed in a future version - lib\services\printing_service.dart:632:26 - deprecated_member_use
+   info - 'initPrinter' is deprecated and shouldn't be used. This method will be removed in a future version - lib\services\printing_service.dart:634:26 - deprecated_member_use
+   info - 'bindingPrinter' is deprecated and shouldn't be used. This method will be removed in a future version - lib\services\printing_service.dart:750:26 - deprecated_member_use
+   info - 'initPrinter' is deprecated and shouldn't be used. This method will be removed in a future version - lib\services\printing_service.dart:752:26 - deprecated_member_use
+   info - Unnecessary use of string interpolation - lib\services\printing_service.dart:923:28 - unnecessary_string_interpolations
+warning - This case is covered by the previous cases - lib\util\printer_status_decoder.dart:88:7 - unreachable_switch_case
+   info - Use 'isNotEmpty' instead of 'length' to test whether the collection is empty - lib\util\printer_status_decoder.dart:118:16 - prefer_is_empty
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:132:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:134:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:135:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:143:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:145:23 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:145:38 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:176:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:178:34 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:186:34 - prefer_const_constructors
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\cart_panel.dart:222:56 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\cart_panel.dart:263:41 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\cart_panel.dart:272:37 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:276:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:278:22 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:285:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:287:22 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:373:20 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\widgets\cart_panel.dart:374:25 - prefer_const_literals_to_create_immutables
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:375:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:381:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:383:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:393:22 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:434:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:454:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:454:29 - prefer_const_constructors
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\cart_panel.dart:461:33 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:473:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:475:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:483:24 - prefer_const_constructors
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\cart_panel.dart:498:37 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\cart_panel.dart:500:56 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:504:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:514:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:516:34 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:524:34 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:535:27 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:565:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:618:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:623:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:625:18 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:632:18 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:634:18 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:652:27 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:709:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:711:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:751:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:757:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:763:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:769:26 - prefer_const_constructors
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\cart_panel.dart:798:35 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\cart_panel.dart:810:30 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:822:22 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:929:22 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\widgets\cart_panel.dart:930:25 - prefer_const_literals_to_create_immutables
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\cart_panel.dart:986:40 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\cart_panel.dart:987:51 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:1005:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:1023:34 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:1032:34 - prefer_const_constructors
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\cart_panel.dart:1045:54 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:1056:27 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\widgets\cart_panel.dart:1058:39 - prefer_const_literals_to_create_immutables
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:1059:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:1061:40 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:1068:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:1070:40 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:1082:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:1084:40 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\cart_panel.dart:1099:42 - prefer_const_constructors
+   info - Invalid use of a private type in a public API - lib\widgets\cart_panel.dart:1170:9 - library_private_types_in_public_api
+   info - Invalid use of a private type in a public API - lib\widgets\cart_panel.dart:1177:19 - library_private_types_in_public_api
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\cart_panel.dart:1192:33 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\category_card.dart:34:41 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\category_card.dart:56:61 - deprecated_member_use
+
+204 issues found. (ran in 4.0s)

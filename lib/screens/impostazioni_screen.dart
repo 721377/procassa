@@ -129,10 +129,10 @@ class _ImpostazioniScreenState extends State<ImpostazioniScreen> {
             ),
             const SizedBox(height: 24),
             _buildSectionTitle('Informazioni'),
-            Card(
+            const Card(
               child: ListTile(
-                title: const Text('Versione'),
-                subtitle: const Text('1.0.0'),
+                title: Text('Versione'),
+                subtitle: Text('1.0.0'),
               ),
             ),
             const SizedBox(height: 12),
@@ -197,7 +197,7 @@ class _ImpostazioniScreenState extends State<ImpostazioniScreen> {
         trailing: Switch(
           value: value,
           onChanged: onChanged,
-          activeColor: const Color(0xFF2D6FF1),
+          activeThumbColor: const Color(0xFF2D6FF1),
         ),
       ),
     );
@@ -245,10 +245,10 @@ class _ImpostazioniScreenState extends State<ImpostazioniScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Procassa POS'),
-        content: Column(
+        content: const Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
+          children: [
             Text('Versione: 1.0.0'),
             SizedBox(height: 12),
             Text(

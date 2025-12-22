@@ -240,3 +240,108 @@ class IVA {
     );
   }
 }
+
+class Transaction {
+  final int? id;
+  final DateTime date;
+  final double total;
+  final String paymentMethod;
+  final bool isReturn;
+  late List<TransactionItem> items;
+  final String? notes;
+  final String? fiscalReceiptNumber;
+  final String? receiptISODateTime;
+  final String? zRepNumber;
+  final String? serialNumber;
+  int status;
+
+  Transaction({
+    this.id,
+    required this.date,
+    required this.total,
+    required this.paymentMethod,
+    this.isReturn = false,
+    List<TransactionItem>? items,
+    this.notes,
+    this.fiscalReceiptNumber,
+    this.receiptISODateTime,
+    this.zRepNumber,
+    this.serialNumber,
+    this.status = 0,
+  }) {
+    this.items = items ?? [];
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'date': date.toIso8601String(),
+      'total': total,
+      'paymentMethod': paymentMethod,
+      'isReturn': isReturn ? 1 : 0,
+      'notes': notes,
+      'fiscalReceiptNumber': fiscalReceiptNumber,
+      'receiptISODateTime': receiptISODateTime,
+      'zRepNumber': zRepNumber,
+      'serialNumber': serialNumber,
+      'status': status,
+    };
+  }
+
+  factory Transaction.fromMap(Map<String, dynamic> map) {
+    return Transaction(
+      id: map['id'],
+      date: DateTime.parse(map['date']),
+      total: map['total'],
+      paymentMethod: map['paymentMethod'],
+      isReturn: (map['isReturn'] as int? ?? 0) == 1,
+      items: [],
+      notes: map['notes'],
+      fiscalReceiptNumber: map['fiscalReceiptNumber'],
+      receiptISODateTime: map['receiptISODateTime'],
+      zRepNumber: map['zRepNumber'],
+      serialNumber: map['serialNumber'],
+      status: map['status'] as int? ?? 0,
+    );
+  }
+}
+
+class TransactionItem {
+  final int? id;
+  final int transactionId;
+  final String productName;
+  final double price;
+  final int quantity;
+  final double total;
+
+  TransactionItem({
+    this.id,
+    required this.transactionId,
+    required this.productName,
+    required this.price,
+    required this.quantity,
+    required this.total,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'transactionId': transactionId,
+      'productName': productName,
+      'price': price,
+      'quantity': quantity,
+      'total': total,
+    };
+  }
+
+  factory TransactionItem.fromMap(Map<String, dynamic> map) {
+    return TransactionItem(
+      id: map['id'],
+      transactionId: map['transactionId'],
+      productName: map['productName'],
+      price: map['price'],
+      quantity: map['quantity'],
+      total: map['total'],
+    );
+  }
+}

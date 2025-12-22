@@ -3,6 +3,7 @@
 import 'dart:developer';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:xml/xml.dart';
 import 'package:esc_pos_printer_plus/esc_pos_printer_plus.dart';
 import 'package:esc_pos_utils_plus/esc_pos_utils_plus.dart' as esc_pos_utils;
 import 'package:flutter_bluetooth_printer/flutter_bluetooth_printer.dart' as bt_printer;
@@ -13,11 +14,11 @@ import 'database_service.dart';
 
 class PrintingService {
   final List<String> _devices = [];
-  bool _isDiscovering = false;
-  String _localIp = '';
-  String _wifiName = '';
-  String _ethernetIp = '';
-  int _port = 9100;
+  final bool _isDiscovering = false;
+  final String _localIp = '';
+  final String _wifiName = '';
+  final String _ethernetIp = '';
+  final int _port = 9100;
   String? _lastError;
 
   List<String> get devices => _devices;
@@ -36,7 +37,7 @@ class PrintingService {
     int? port,
   }) async {
     try {
-      final paper = esc_pos_utils.PaperSize.mm80;
+      const paper = esc_pos_utils.PaperSize.mm80;
       final profile = await esc_pos_utils.CapabilityProfile.load();
       final printer = NetworkPrinter(paper, profile);
 
@@ -99,7 +100,7 @@ Future<bool> printCommandViaBluetooth(
     if (!success) return false;
 
     // 2) Feed 5 lines
-    final Uint8List feed5 = Uint8List.fromList([0x1B, 0x69]);;
+    final Uint8List feed5 = Uint8List.fromList([0x1B, 0x69]);
     await bt_printer.FlutterBluetoothPrinter.printBytes(
       address: bluetoothAddress,
       data: feed5,
@@ -150,7 +151,7 @@ Future<bool> printCommandViaBluetooth(
         );
       }
 
-      final paper = esc_pos_utils.PaperSize.mm80;
+      const paper = esc_pos_utils.PaperSize.mm80;
       final profile = await esc_pos_utils.CapabilityProfile.load();
       final printer = NetworkPrinter(paper, profile);
 
@@ -191,7 +192,7 @@ Future<bool> printCommandViaBluetooth(
     int? port,
   }) async {
     try {
-      final paper = esc_pos_utils.PaperSize.mm80;
+      const paper = esc_pos_utils.PaperSize.mm80;
       final profile = await esc_pos_utils.CapabilityProfile.load();
       final printer = NetworkPrinter(paper, profile);
 
@@ -209,7 +210,7 @@ Future<bool> printCommandViaBluetooth(
 
         printer.text(
           'RICEVUTA FISCALE',
-          styles: esc_pos_utils.PosStyles(
+          styles: const esc_pos_utils.PosStyles(
             align: esc_pos_utils.PosAlign.center,
             height: esc_pos_utils.PosTextSize.size2,
             width: esc_pos_utils.PosTextSize.size2,
@@ -222,7 +223,7 @@ Future<bool> printCommandViaBluetooth(
 
         printer.text(
           dateFormatter.format(now),
-          styles: esc_pos_utils.PosStyles(
+          styles: const esc_pos_utils.PosStyles(
             align: esc_pos_utils.PosAlign.center,
           ),
           linesAfter: 1,
@@ -236,7 +237,7 @@ Future<bool> printCommandViaBluetooth(
           final quantity = item['quantity'] as int? ?? 1;
           final itemTotal = quantity * price;
 
-          printer.text(name, styles: esc_pos_utils.PosStyles(bold: true));
+          printer.text(name, styles: const esc_pos_utils.PosStyles(bold: true));
           printer.text(
             'Qty: $quantity x \$${price.toStringAsFixed(2)} = \$${itemTotal.toStringAsFixed(2)}',
           );
@@ -250,12 +251,12 @@ Future<bool> printCommandViaBluetooth(
           esc_pos_utils.PosColumn(
             text: 'Subtotale',
             width: 10,
-            styles: esc_pos_utils.PosStyles(bold: true),
+            styles: const esc_pos_utils.PosStyles(bold: true),
           ),
           esc_pos_utils.PosColumn(
             text: '\$${totalAmount.toStringAsFixed(2)}',
             width: 2,
-            styles: esc_pos_utils.PosStyles(align: esc_pos_utils.PosAlign.right, bold: true),
+            styles: const esc_pos_utils.PosStyles(align: esc_pos_utils.PosAlign.right, bold: true),
           ),
         ]);
 
@@ -263,12 +264,12 @@ Future<bool> printCommandViaBluetooth(
           esc_pos_utils.PosColumn(
             text: 'IVA ${taxPercentage.toStringAsFixed(0)}%',
             width: 10,
-            styles: esc_pos_utils.PosStyles(bold: true),
+            styles: const esc_pos_utils.PosStyles(bold: true),
           ),
           esc_pos_utils.PosColumn(
             text: '\$${tax.toStringAsFixed(2)}',
             width: 2,
-            styles: esc_pos_utils.PosStyles(align: esc_pos_utils.PosAlign.right, bold: true),
+            styles: const esc_pos_utils.PosStyles(align: esc_pos_utils.PosAlign.right, bold: true),
           ),
         ]);
 
@@ -278,7 +279,7 @@ Future<bool> printCommandViaBluetooth(
           esc_pos_utils.PosColumn(
             text: 'TOTALE',
             width: 10,
-            styles: esc_pos_utils.PosStyles(
+            styles: const esc_pos_utils.PosStyles(
               bold: true,
               height: esc_pos_utils.PosTextSize.size2,
               width: esc_pos_utils.PosTextSize.size2,
@@ -287,7 +288,7 @@ Future<bool> printCommandViaBluetooth(
           esc_pos_utils.PosColumn(
             text: '\$${total.toStringAsFixed(2)}',
             width: 2,
-            styles: esc_pos_utils.PosStyles(
+            styles: const esc_pos_utils.PosStyles(
               align: esc_pos_utils.PosAlign.right,
               bold: true,
               height: esc_pos_utils.PosTextSize.size2,
@@ -315,7 +316,7 @@ Future<bool> printCommandViaBluetooth(
 
         printer.text(
           'Pagamento: $paymentDisplay',
-          styles: esc_pos_utils.PosStyles(
+          styles: const esc_pos_utils.PosStyles(
             align: esc_pos_utils.PosAlign.center,
             bold: true,
           ),
@@ -335,58 +336,46 @@ Future<bool> printCommandViaBluetooth(
     }
   }
 
-  String _buildPrintContent(
-    List<Map<String, dynamic>> items,
-    double subtotal,
-    double taxPercentage, {
-    String? businessName,
-  }) {
-    StringBuffer buffer = StringBuffer();
+String _buildPrintContent(
+  List<Map<String, dynamic>> items,
+  double subtotal,
+  double taxPercentage, {
+  String? businessName,
+}) {
+  StringBuffer buffer = StringBuffer();
 
-    // if (businessName != null && businessName.isNotEmpty) {
-    //   buffer.writeln('\n$businessName\n');
-    // }
+  buffer.writeln('\x1B\x21\x30         ORDINE             \x1B\x21\x00');
+  buffer.writeln('-----------------------------------------------\n');
 
-    // buffer.writeln('-------------------------------------------------');
-    buffer.writeln('\x1B\x21\x30         ORDINE             \x1B\x21\x00');
+  for (final item in items) {
+    final name = item['name'] as String? ?? 'Item';
+    final quantity = item['quantity'] as int? ?? 1;
+    final price = item['price'] as double? ?? 0.0;
+    final total = quantity * price;
 
-    buffer.writeln('-----------------------------------------------\n');
-
-    // buffer.writeln('ARTICOLO              QTY      PREZZO');
-    // buffer.writeln('--------------------------------');
-
-    for (final item in items) {
-      final name = item['name'] as String? ?? 'Item';
-      final quantity = item['quantity'] as int? ?? 1;
-      final price = item['price'] as double? ?? 0.0;
-      final total = quantity * price;
-
-      final displayName =
-          name.length > 18 ? name.substring(0, 18) : name;
-      final padding = ' ' * (18 - displayName.length);
-      buffer.writeln('\x1B\x21\x09 ${quantity.toString().padLeft(3)}     X${total.toStringAsFixed(2).padLeft(8)}  $displayName  \x1B\x21\x00');
-      buffer.writeln('\n');
-    }
-
-    buffer.writeln('-----------------------------------------------');
-
-    // buffer.writeln('Subtotale:               €${subtotal.toStringAsFixed(2)}');
-
-    // final tax = subtotal * (taxPercentage / 100);
-    // buffer.writeln('IVA (${taxPercentage.toStringAsFixed(0)}%):                \$${tax.toStringAsFixed(2)}');
-
-    final total = subtotal; //+ tax;
-    buffer.writeln('\x1B\x21\x12 TOTALE:                   €${total.toStringAsFixed(2)} \x1B\x21\x00');
-
-    buffer.writeln('-----------------------------------------------\n');
-
-    final now = DateTime.now();
-    final dateFormatter = DateFormat('dd/MM/yyyy HH:mm');
-    buffer.writeln(dateFormatter.format(now));
-    buffer.writeln('\n\n\n');
-
-    return buffer.toString();
+    final displayName = name.length > 18 ? name.substring(0, 18) : name;
+    final padding = ' ' * (18 - displayName.length);
+    buffer.writeln(
+      '\x1B\x21\x11 ${quantity.toString().padLeft(3)}     X${total.toStringAsFixed(2).padLeft(8)}  $displayName  \x1B\x21\x00'
+    );
+    buffer.writeln('\n');
   }
+
+  buffer.writeln('-----------------------------------------------');
+
+  // Use \x80 for Euro symbol
+  buffer.writeln('\x1B\x21\x13 TOTALE:                   \x80${subtotal.toStringAsFixed(2)} \x1B\x21\x00');
+
+  buffer.writeln('-----------------------------------------------\n');
+
+  final now = DateTime.now();
+  final dateFormatter = DateFormat('dd/MM/yyyy HH:mm');
+  buffer.writeln(dateFormatter.format(now));
+  buffer.writeln('\n\n\n');
+
+  return buffer.toString();
+}
+
 
   Future<void> _printPaymentReceiptContent(
     NetworkPrinter printer,
@@ -398,7 +387,7 @@ Future<bool> printCommandViaBluetooth(
     if (businessName != null && businessName.isNotEmpty) {
       printer.text(
         businessName,
-        styles: esc_pos_utils.PosStyles(
+        styles: const esc_pos_utils.PosStyles(
           align: esc_pos_utils.PosAlign.center,
           bold: true,
           height: esc_pos_utils.PosTextSize.size2,
@@ -412,7 +401,7 @@ Future<bool> printCommandViaBluetooth(
 
     printer.text(
       'RICEVUTA PAGAMENTO',
-      styles: esc_pos_utils.PosStyles(
+      styles: const esc_pos_utils.PosStyles(
         align: esc_pos_utils.PosAlign.center,
         bold: true,
         height: esc_pos_utils.PosTextSize.size2,
@@ -429,12 +418,12 @@ Future<bool> printCommandViaBluetooth(
       esc_pos_utils.PosColumn(
         text: 'Subtotale',
         width: 10,
-        styles: esc_pos_utils.PosStyles(bold: true),
+        styles: const esc_pos_utils.PosStyles(bold: true),
       ),
       esc_pos_utils.PosColumn(
         text: '\$${subtotal.toStringAsFixed(2)}',
         width: 2,
-        styles: esc_pos_utils.PosStyles(align: esc_pos_utils.PosAlign.right, bold: true),
+        styles: const esc_pos_utils.PosStyles(align: esc_pos_utils.PosAlign.right, bold: true),
       ),
     ]);
 
@@ -442,12 +431,12 @@ Future<bool> printCommandViaBluetooth(
       esc_pos_utils.PosColumn(
         text: 'IVA (${taxPercentage.toStringAsFixed(0)}%)',
         width: 10,
-        styles: esc_pos_utils.PosStyles(bold: true),
+        styles: const esc_pos_utils.PosStyles(bold: true),
       ),
       esc_pos_utils.PosColumn(
         text: '\$${tax.toStringAsFixed(2)}',
         width: 2,
-        styles: esc_pos_utils.PosStyles(align: esc_pos_utils.PosAlign.right, bold: true),
+        styles: const esc_pos_utils.PosStyles(align: esc_pos_utils.PosAlign.right, bold: true),
       ),
     ]);
 
@@ -455,12 +444,12 @@ Future<bool> printCommandViaBluetooth(
       esc_pos_utils.PosColumn(
         text: 'TOTALE',
         width: 10,
-        styles: esc_pos_utils.PosStyles(bold: true, height: esc_pos_utils.PosTextSize.size2),
+        styles: const esc_pos_utils.PosStyles(bold: true, height: esc_pos_utils.PosTextSize.size2),
       ),
       esc_pos_utils.PosColumn(
         text: '\$${totalAmount.toStringAsFixed(2)}',
         width: 2,
-        styles: esc_pos_utils.PosStyles(
+        styles: const esc_pos_utils.PosStyles(
           align: esc_pos_utils.PosAlign.right,
           bold: true,
           height: esc_pos_utils.PosTextSize.size2,
@@ -472,7 +461,7 @@ Future<bool> printCommandViaBluetooth(
 
     printer.text(
       'Metodo Pagamento: $paymentMethod',
-      styles: esc_pos_utils.PosStyles(
+      styles: const esc_pos_utils.PosStyles(
         align: esc_pos_utils.PosAlign.center,
       ),
       linesAfter: 1,
@@ -483,7 +472,7 @@ Future<bool> printCommandViaBluetooth(
 
     printer.text(
       dateFormatter.format(now),
-      styles: esc_pos_utils.PosStyles(
+      styles: const esc_pos_utils.PosStyles(
         align: esc_pos_utils.PosAlign.center,
       ),
       linesAfter: 2,
@@ -502,7 +491,7 @@ Future<bool> printCommandViaBluetooth(
     if (businessName != null && businessName.isNotEmpty) {
       printer.text(
         businessName,
-        styles: esc_pos_utils.PosStyles(
+        styles: const esc_pos_utils.PosStyles(
           align: esc_pos_utils.PosAlign.center,
           bold: true,
           height: esc_pos_utils.PosTextSize.size2,
@@ -516,7 +505,7 @@ Future<bool> printCommandViaBluetooth(
 
     printer.text(
       'ORDINE',
-      styles: esc_pos_utils.PosStyles(
+      styles: const esc_pos_utils.PosStyles(
         align: esc_pos_utils.PosAlign.center,
         bold: true,
         height: esc_pos_utils.PosTextSize.size2,
@@ -530,17 +519,17 @@ Future<bool> printCommandViaBluetooth(
       esc_pos_utils.PosColumn(
         text: 'Articolo',
         width: 8,
-        styles: esc_pos_utils.PosStyles(bold: true, width: esc_pos_utils.PosTextSize.size1),
+        styles: const esc_pos_utils.PosStyles(bold: true, width: esc_pos_utils.PosTextSize.size1),
       ),
       esc_pos_utils.PosColumn(
         text: 'Qty',
         width: 2,
-        styles: esc_pos_utils.PosStyles(bold: true, align: esc_pos_utils.PosAlign.center),
+        styles: const esc_pos_utils.PosStyles(bold: true, align: esc_pos_utils.PosAlign.center),
       ),
       esc_pos_utils.PosColumn(
         text: 'Prezzo',
         width: 2,
-        styles: esc_pos_utils.PosStyles(bold: true, align: esc_pos_utils.PosAlign.right),
+        styles: const esc_pos_utils.PosStyles(bold: true, align: esc_pos_utils.PosAlign.right),
       ),
     ]);
 
@@ -560,12 +549,12 @@ Future<bool> printCommandViaBluetooth(
         esc_pos_utils.PosColumn(
           text: quantity.toString(),
           width: 2,
-          styles: esc_pos_utils.PosStyles(align: esc_pos_utils.PosAlign.center),
+          styles: const esc_pos_utils.PosStyles(align: esc_pos_utils.PosAlign.center),
         ),
         esc_pos_utils.PosColumn(
           text: '\$${total.toStringAsFixed(2)}',
           width: 2,
-          styles: esc_pos_utils.PosStyles(align: esc_pos_utils.PosAlign.right),
+          styles: const esc_pos_utils.PosStyles(align: esc_pos_utils.PosAlign.right),
         ),
       ]);
     }
@@ -576,12 +565,12 @@ Future<bool> printCommandViaBluetooth(
       esc_pos_utils.PosColumn(
         text: 'Subtotale',
         width: 10,
-        styles: esc_pos_utils.PosStyles(bold: true),
+        styles: const esc_pos_utils.PosStyles(bold: true),
       ),
       esc_pos_utils.PosColumn(
         text: '\$${subtotal.toStringAsFixed(2)}',
         width: 2,
-        styles: esc_pos_utils.PosStyles(align: esc_pos_utils.PosAlign.right, bold: true),
+        styles: const esc_pos_utils.PosStyles(align: esc_pos_utils.PosAlign.right, bold: true),
       ),
     ]);
 
@@ -590,12 +579,12 @@ Future<bool> printCommandViaBluetooth(
       esc_pos_utils.PosColumn(
         text: 'IVA (${taxPercentage.toStringAsFixed(0)}%)',
         width: 10,
-        styles: esc_pos_utils.PosStyles(bold: true),
+        styles: const esc_pos_utils.PosStyles(bold: true),
       ),
       esc_pos_utils.PosColumn(
         text: '\$${tax.toStringAsFixed(2)}',
         width: 2,
-        styles: esc_pos_utils.PosStyles(align: esc_pos_utils.PosAlign.right, bold: true),
+        styles: const esc_pos_utils.PosStyles(align: esc_pos_utils.PosAlign.right, bold: true),
       ),
     ]);
 
@@ -604,12 +593,12 @@ Future<bool> printCommandViaBluetooth(
       esc_pos_utils.PosColumn(
         text: 'TOTALE',
         width: 10,
-        styles: esc_pos_utils.PosStyles(bold: true, height: esc_pos_utils.PosTextSize.size2),
+        styles: const esc_pos_utils.PosStyles(bold: true, height: esc_pos_utils.PosTextSize.size2),
       ),
       esc_pos_utils.PosColumn(
         text: '\$${total.toStringAsFixed(2)}',
         width: 2,
-        styles: esc_pos_utils.PosStyles(
+        styles: const esc_pos_utils.PosStyles(
           align: esc_pos_utils.PosAlign.right,
           bold: true,
           height: esc_pos_utils.PosTextSize.size2,
@@ -624,7 +613,7 @@ Future<bool> printCommandViaBluetooth(
 
     printer.text(
       dateFormatter.format(now),
-      styles: esc_pos_utils.PosStyles(
+      styles: const esc_pos_utils.PosStyles(
         align: esc_pos_utils.PosAlign.center,
       ),
       linesAfter: 2,
@@ -675,7 +664,7 @@ Future<void> _printSunmiOrderContent(
         style: SunmiTextStyle(
           align: SunmiPrintAlign.CENTER,
           bold: true,
-          fontSize: 26,
+          fontSize: 37,
         ),
       );
       await SunmiPrinter.lineWrap(40);
@@ -692,7 +681,7 @@ Future<void> _printSunmiOrderContent(
         '$quantity X${price.toStringAsFixed(2)}  $name',
         style: SunmiTextStyle(
           align: SunmiPrintAlign.LEFT,
-          fontSize: 24,
+          fontSize: 32,
           bold: true,
         ),
       );
@@ -707,7 +696,7 @@ Future<void> _printSunmiOrderContent(
       '--------------------------------',
       style: SunmiTextStyle(
         align: SunmiPrintAlign.CENTER,
-        fontSize: 22,
+        fontSize: 20,
       ),
     );
     
@@ -722,7 +711,7 @@ Future<void> _printSunmiOrderContent(
       style: SunmiTextStyle(
         align: SunmiPrintAlign.LEFT,
         bold: true,
-        fontSize: 26,
+        fontSize: 32,
       ),
     );
 
@@ -733,7 +722,7 @@ Future<void> _printSunmiOrderContent(
       '--------------------------------',
       style: SunmiTextStyle(
         align: SunmiPrintAlign.CENTER,
-        fontSize: 22,
+        fontSize: 20,
       ),
     );
     
@@ -749,11 +738,11 @@ Future<void> _printSunmiOrderContent(
       dateFormatter.format(now),
       style: SunmiTextStyle(
         align: SunmiPrintAlign.CENTER,
-        fontSize: 24,
+        fontSize: 28,
       ),
     );
 
-    await SunmiPrinter.lineWrap(18);
+    await SunmiPrinter.lineWrap(22);
     await SunmiPrinter.cutPaper();
   }
 
@@ -769,7 +758,7 @@ Future<void> _printSunmiOrderContent(
           style: SunmiTextStyle(
             align: SunmiPrintAlign.CENTER,
             bold: true,
-            fontSize: 20,
+            fontSize: 30,
           ),
         );
         await SunmiPrinter.lineWrap(1);
@@ -818,7 +807,7 @@ Future<void> _printSunmiOrderContent(
     }
   }
 
-  Future<bool> printEpsonReceiptAutomatic(
+  Future<String?> printEpsonReceiptAutomatic(
     List<Map<String, dynamic>> items,
     double totalAmount,
     String paymentMethod, {
@@ -830,7 +819,7 @@ Future<void> _printSunmiOrderContent(
       print('Epson printer details: $printer');
       if (printer == null) {
         log('Epson receipt printer not found in database');
-        return false;
+        return null;
       }
 
       final receiptData = {
@@ -846,7 +835,7 @@ Future<void> _printSunmiOrderContent(
       return await _sendXmlToEpsonPrinter(printer, xmlData);
     } catch (e) {
       log('Error printing Epson receipt: $e');
-      return false;
+      return null;
     }
   }
 
@@ -900,6 +889,10 @@ Future<void> _printSunmiOrderContent(
           paymentDescription = 'TICKET';
           indexCode = '1';
           break;
+        case 'SATISPAY':
+          paymentTypeCode = '2';
+          paymentDescription = 'CARTA';
+          indexCode = '1';
         default:
           paymentTypeCode = '0';
           paymentDescription = 'CONTANTE';
@@ -917,7 +910,7 @@ Future<void> _printSunmiOrderContent(
     <printerFiscalReceipt>
       <beginFiscalReceipt operator="1" />
       $itemsXml
-      <printRecMessage operator="1" message="${tableInfo ?? formattedDate}" type="1" font="1" messageType="2" index="1" />
+      <printRecMessage operator="1" message="$formattedDate" type="1" font="1" messageType="2" index="1" />
       $paymentsXml
       <endFiscalReceipt operator="1" />
     </printerFiscalReceipt>
@@ -925,10 +918,10 @@ Future<void> _printSunmiOrderContent(
 </soapenv:Envelope>''';
   }
 
-  Future<bool> _sendXmlToEpsonPrinter(
+  Future<String?> _sendXmlToEpsonPrinter(
       Stampante printer, String xmlData) async {
     try {
-      final url = Uri.http('${printer.indirizzoIp}', '/cgi-bin/fpmate.cgi');
+      final url = Uri.http(printer.indirizzoIp, '/cgi-bin/fpmate.cgi');
 
       print('ip adress : ${printer.indirizzoIp}');
       print('port : ${printer.porta}');
@@ -947,14 +940,147 @@ Future<void> _printSunmiOrderContent(
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         log('Receipt printed successfully on Epson printer');
-        return true;
+        return response.body;
       } else {
         log('Epson printer error: ${response.body}');
-        return false;
+        return null;
       }
     } catch (e) {
       log('Error sending XML to Epson printer: $e');
-      return false;
+      return null;
     }
   }
+
+  String? extractPrinterStatusFromResponse(String responseBody) {
+    try {
+      final document = XmlDocument.parse(responseBody);
+      final printerStatusElement = document.findAllElements('printerStatus').firstOrNull;
+      if (printerStatusElement != null) {
+        final printerStatus = printerStatusElement.innerText.trim();
+        if (printerStatus.isNotEmpty && printerStatus.length >= 5) {
+          log('Extracted printer status: $printerStatus');
+          return printerStatus;
+        }
+      }
+    } catch (e) {
+      log('Error extracting printer status: $e');
+    }
+    return null;
+  }
+
+  Future<String?> printRefundReceipt({
+    required String zRepNumber,
+    required String fiscalReceiptNumber,
+    required String receiptISODateTime,
+    required String serialNumber,
+    required List<Map<String, dynamic>> refundItems,
+    required String paymentMethod,
+    String? justification = 'Errore emissione',
+  }) async {
+    try {
+      final printer = await _getEpsonReceiptPrinter();
+      if (printer == null) {
+        log('Epson receipt printer not found for refund');
+        return null;
+      }
+
+      final refundXml = _generateRefundXml(
+        zRepNumber: zRepNumber,
+        fiscalReceiptNumber: fiscalReceiptNumber,
+        receiptISODateTime: receiptISODateTime,
+        serialNumber: serialNumber,
+        refundItems: refundItems,
+        paymentMethod: paymentMethod,
+        justification: justification!,
+      );
+      print('Refund XML: $refundXml');
+
+      log('Sending refund XML to Epson printer');
+      return await _sendXmlToEpsonPrinter(printer, refundXml);
+    } catch (e) {
+      log('Error printing refund receipt: $e');
+      return null;
+    }
+  }
+
+String _generateRefundXml({
+  required String zRepNumber,
+  required String fiscalReceiptNumber,
+  required String receiptISODateTime,
+  required String serialNumber,
+  required List<Map<String, dynamic>> refundItems,
+  required String paymentMethod,
+  required String justification,
+}) {
+  // Epson date format: DDMMYY
+  final parsedDate = DateTime.parse(receiptISODateTime);
+ final formattedDate = 
+      '${parsedDate.day.toString().padLeft(2, '0')}'
+      '${parsedDate.month.toString().padLeft(2, '0')}'
+      '${parsedDate.year}';
+
+  final paddedZRepNumber = zRepNumber.padLeft(4, '0');
+  final paddedFiscalReceiptNumber = fiscalReceiptNumber.padLeft(4, '0');
+
+  // Build refund header message with original receipt info
+  final headerMessage ='VOID $paddedZRepNumber $paddedFiscalReceiptNumber $formattedDate $serialNumber';
+
+  // Calculate total refund amount from all items
+  double totalRefundAmount = 0.0;
+  
+  // Build printRecRefund elements for each item
+  String refundItemsXml = '';
+  for (final item in refundItems) {
+    final name = item['name'] as String? ?? 'Item';
+    final price = item['price'] as double? ?? 0.0;
+    final quantity = item['quantity'] as int? ?? 1;
+    
+    totalRefundAmount += (price * quantity);
+    
+    final formattedQty = quantity.toStringAsFixed(3).replaceAll('.', ',');
+    final formattedPrice = price.toStringAsFixed(2).replaceAll('.', ',');
+
+    refundItemsXml += '''
+      <printRecRefund operator="1" description="$name" quantity="$formattedQty" unitPrice="$formattedPrice" department="1" />
+''';
+  }
+
+  final formattedTotalAmount = totalRefundAmount.toStringAsFixed(2).replaceAll('.', ',');
+
+  String paymentTypeCode = '0';
+  String paymentDescription = 'CONTANTI';
+  String indexCode = '0';
+
+  switch (paymentMethod.toUpperCase()) {
+    case 'CARTA':
+    case 'SATISPAY':
+      paymentTypeCode = '2';
+      paymentDescription = 'CARTA';
+      indexCode = '1';
+      break;
+
+    case 'TICKET':
+      paymentTypeCode = '3';
+      paymentDescription = 'TICKET';
+      indexCode = '1';
+      break;
+
+    default:
+      paymentTypeCode = '0';
+      paymentDescription = 'CONTANTI';
+      indexCode = '0';
+  }
+
+  return '''<?xml version="1.0" encoding="utf-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+  <soapenv:Body>
+    <printerFiscalReceipt>
+      <printRecMessage operator="1" message="$headerMessage" messageType="4" />
+      
+    </printerFiscalReceipt>
+  </soapenv:Body>
+</soapenv:Envelope>''';
+}
+
+
 }

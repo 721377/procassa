@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:xml/xml.dart';
 import '../models.dart';
 import '../services/printing_service.dart';
+import '../services/database_service.dart';
+import '../util/printer_status_decoder.dart' as decoder;
 
 class CartPanel extends StatefulWidget {
   final List<CartItem> cartItems;
@@ -77,10 +80,87 @@ class _CartPanelState extends State<CartPanel> {
     }
   }
 
+  void _validatePrinterStatus(Map<String, String> statusSegments, List<String> errors) {
+    if (statusSegments['printer'] != 'OK') {
+      final printerStatus = statusSegments['printer'] ?? 'Errore stampante sconosciuto';
+      if (printerStatus != 'Carta in esaurimento') {
+        errors.add(printerStatus);
+      }
+    }
+    if (statusSegments['ej'] != 'Giornale elettronico OK') {
+      errors.add(statusSegments['ej'] ?? 'Errore giornale elettronico');
+    }
+    if (statusSegments['cashDrawer'] != 'Cassetto chiuso') {
+      errors.add(statusSegments['cashDrawer'] ?? 'Errore cassetto');
+    }
+    if (statusSegments['receipt'] != 'Scontrino chiuso') {
+      errors.add(statusSegments['receipt'] ?? 'Errore scontrino');
+    }
+    if (statusSegments['mode'] != 'Stato: Registrazione') {
+      errors.add(statusSegments['mode'] ?? 'Errore modalità');
+    }
+  }
+
+  bool _checkPaperWarning(Map<String, String> statusSegments) {
+    final printerStatus = statusSegments['printer'] ?? '';
+    return printerStatus == 'Carta in esaurimento';
+  }
+
+  Map<String, dynamic> _parsePrinterResponse(String responseBody) {
+    final result = <String, dynamic>{
+      'fiscalReceiptNumber': null,
+      'receiptISODateTime': null,
+      'zRepNumber': null,
+      'serialNumber': null,
+      'statusSegments': <String, String>{},
+      'printerStatus': null,
+    };
+
+    try {
+      final document = XmlDocument.parse(responseBody);
+
+      final fiscalReceiptNumberElement = document.findAllElements('fiscalReceiptNumber').firstOrNull;
+      if (fiscalReceiptNumberElement != null) {
+        result['fiscalReceiptNumber'] = fiscalReceiptNumberElement.innerText.trim();
+      }
+
+      final receiptISODateTimeElement = document.findAllElements('receiptISODateTime').firstOrNull;
+      if (receiptISODateTimeElement != null) {
+        result['receiptISODateTime'] = receiptISODateTimeElement.innerText.trim();
+      }
+
+      final zRepNumberElement = document.findAllElements('zRepNumber').firstOrNull;
+      if (zRepNumberElement != null) {
+        result['zRepNumber'] = zRepNumberElement.innerText.trim();
+      }
+
+      final serialNumberElement = document.findAllElements('serialNumber').firstOrNull;
+      if (serialNumberElement != null) {
+        result['serialNumber'] = serialNumberElement.innerText.trim();
+      }
+
+      final printerStatusElement = document.findAllElements('printerStatus').firstOrNull;
+      if (printerStatusElement != null) {
+        final printerStatus = printerStatusElement.innerText.trim();
+        if (printerStatus.isNotEmpty && printerStatus.length >= 5) {
+          result['printerStatus'] = printerStatus;
+          result['statusSegments'] = decoder.FpStatusDecoder.decodeFpStatusSegments(printerStatus);
+          debugPrint('Decoded printer status: ${result["statusSegments"]}');
+        } else if (printerStatus.isNotEmpty) {
+          debugPrint('Printer status too short: "$printerStatus" (expected at least 5 characters)');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error parsing printer response: $e');
+    }
+
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: backgroundColor,
         border: Border(
           left: BorderSide(color: borderColor, width: 1),
@@ -91,9 +171,13 @@ class _CartPanelState extends State<CartPanel> {
           // Minimalist header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: surfaceColor,
               border: Border(bottom: BorderSide(color: borderColor, width: 1)),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(18),
+                bottomRight: Radius.circular(18),
+              ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -120,7 +204,7 @@ class _CartPanelState extends State<CartPanel> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        const Text(
                           'Ordine Corrente',
                           style: TextStyle(
                             fontSize: 18,
@@ -129,8 +213,8 @@ class _CartPanelState extends State<CartPanel> {
                           ),
                         ),
                         Text(
-                          '${widget.totalItems} articolo${widget.totalItems != 1 ? 'i' : ''}',
-                          style: TextStyle(
+                          '${widget.totalItems} articol${widget.totalItems != 1 ? 'i' : 'o'}',
+                          style: const TextStyle(
                             fontSize: 12,
                             color: textSecondary,
                             fontWeight: FontWeight.w500,
@@ -220,7 +304,7 @@ class _CartPanelState extends State<CartPanel> {
               ),
             ),
             const SizedBox(height: 16),
-            Text(
+            const Text(
               'Carrello Vuoto',
               style: TextStyle(
                 fontSize: 20,
@@ -229,7 +313,7 @@ class _CartPanelState extends State<CartPanel> {
               ),
             ),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'Aggiungi articoli per iniziare',
               style: TextStyle(
                 fontSize: 14,
@@ -317,14 +401,14 @@ class _CartPanelState extends State<CartPanel> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
-            title: Row(
+            title: const Row(
               children: [
                 Icon(
                   Icons.warning_amber_rounded,
                   color: dangerColor,
                   size: 22,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Text(
                   'Rimuovi Articolo',
                   style: TextStyle(
@@ -337,7 +421,7 @@ class _CartPanelState extends State<CartPanel> {
             ),
             content: Text(
               'Rimuovere "${item.product.name}" dall\'ordine?',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 14,
                 color: textSecondary,
               ),
@@ -378,7 +462,7 @@ class _CartPanelState extends State<CartPanel> {
         item: item,
         onUpdateQuantity: widget.onUpdateQuantity,
         onRemove: widget.onRemoveItem,
-        colors: _CartColors(
+        colors: const _CartColors(
           primary: primaryColor,
           success: successColor,
           surface: surfaceColor,
@@ -398,7 +482,11 @@ class _CartPanelState extends State<CartPanel> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: surfaceColor,
-        border: Border(top: BorderSide(color: borderColor, width: 1)),
+        border: const Border(top: BorderSide(color: borderColor, width: 1)),
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -413,7 +501,7 @@ class _CartPanelState extends State<CartPanel> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
+              const Text(
                 'TOTALE',
                 style: TextStyle(
                   fontSize: 16,
@@ -423,7 +511,7 @@ class _CartPanelState extends State<CartPanel> {
               ),
               Text(
                 '€${total.toStringAsFixed(2)}',
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
                   color: textPrimary,
@@ -444,7 +532,7 @@ class _CartPanelState extends State<CartPanel> {
               ),
               child: Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.payment_rounded,
                     color: successColor,
                     size: 20,
@@ -454,7 +542,7 @@ class _CartPanelState extends State<CartPanel> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        const Text(
                           'Pagamento',
                           style: TextStyle(
                             fontSize: 11,
@@ -464,7 +552,7 @@ class _CartPanelState extends State<CartPanel> {
                         ),
                         Text(
                           _getDisplayPaymentMethod(_selectedPaymentMethod!),
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 14,
                             color: successColor,
                             fontWeight: FontWeight.w700,
@@ -475,7 +563,7 @@ class _CartPanelState extends State<CartPanel> {
                   ),
                   IconButton(
                     onPressed: () => _showPaymentMethodModal(context),
-                    icon: Icon(
+                    icon: const Icon(
                       Icons.edit_rounded,
                       color: textSecondary,
                       size: 16,
@@ -505,7 +593,7 @@ class _CartPanelState extends State<CartPanel> {
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
-                        side: BorderSide(color: borderColor, width: 1),
+                        side: const BorderSide(color: borderColor, width: 1),
                       ),
                       elevation: 0,
                     ),
@@ -558,12 +646,12 @@ class _CartPanelState extends State<CartPanel> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        icon: Icon(
+        icon: const Icon(
           Icons.delete_forever_rounded,
           color: dangerColor,
           size: 36,
         ),
-        title: Text(
+        title: const Text(
           'Svuota Ordine',
           style: TextStyle(
             fontSize: 18,
@@ -572,7 +660,7 @@ class _CartPanelState extends State<CartPanel> {
           ),
           textAlign: TextAlign.center,
         ),
-        content: Text(
+        content: const Text(
           'Rimuovere tutti gli articoli dall\'ordine?',
           style: TextStyle(
             fontSize: 14,
@@ -592,7 +680,7 @@ class _CartPanelState extends State<CartPanel> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    side: BorderSide(color: borderColor),
+                    side: const BorderSide(color: borderColor),
                   ),
                   child: const Text('Annulla'),
                 ),
@@ -649,7 +737,7 @@ class _CartPanelState extends State<CartPanel> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
+                const Text(
                   'Metodo di Pagamento',
                   style: TextStyle(
                     fontSize: 18,
@@ -691,25 +779,25 @@ class _CartPanelState extends State<CartPanel> {
                   icon: Icons.receipt_long_rounded,
                   title: 'Buono',
                   value: 'TICKET',
-                  color: Color(0xFFFFD166),
+                  color: const Color(0xFFFFD166),
                 ),
                 _buildCompactPaymentOption(
                   icon: Icons.phone_android_rounded,
                   title: 'Satispay',
                   value: 'SATISPAY',
-                  color: Color(0xFF3A0CA3),
+                  color: const Color(0xFF3A0CA3),
                 ),
                 _buildCompactPaymentOption(
                   icon: Icons.account_balance_rounded,
                   title: 'Bonifico',
                   value: 'TRANSFER',
-                  color: Color(0xFF4CC9F0),
+                  color: const Color(0xFF4CC9F0),
                 ),
                 _buildCompactPaymentOption(
                   icon: Icons.wallet_rounded,
                   title: 'Mobile',
                   value: 'MOBILE',
-                  color: Color(0xFF7209B7),
+                  color: const Color(0xFF7209B7),
                 ),
               ],
             ),
@@ -762,7 +850,7 @@ class _CartPanelState extends State<CartPanel> {
             const SizedBox(height: 8),
             Text(
               title,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: textPrimary,
@@ -792,11 +880,99 @@ class _CartPanelState extends State<CartPanel> {
         .toList();
 
     final printingService = PrintingService();
-    await printingService.printEpsonReceiptAutomatic(
+    final responseBody = await printingService.printEpsonReceiptAutomatic(
       items,
       total,
       paymentMethod,
     );
+
+    final errors = <String>[];
+    bool hasPaperWarning = false;
+    Map<String, String> statusSegments = {};
+    Map<String, dynamic> fiscalData = {};
+    int transactionId = 0;
+
+    if (responseBody != null) {
+      fiscalData = _parsePrinterResponse(responseBody);
+      statusSegments = (fiscalData['statusSegments'] as Map<String, String>?) ?? {};
+
+      if (statusSegments.isNotEmpty) {
+        _validatePrinterStatus(statusSegments, errors);
+        hasPaperWarning = _checkPaperWarning(statusSegments);
+      }
+
+      if (hasPaperWarning && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.white),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Attenzione: Carta in esaurimento. Sostituire il rotolo al più presto.',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 5),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+
+      if (errors.isEmpty) {
+        try {
+          final transaction = Transaction(
+            date: DateTime.now(),
+            total: total,
+            paymentMethod: paymentMethod,
+            isReturn: false,
+            items: widget.cartItems.map((cartItem) {
+              return TransactionItem(
+                transactionId: 0,
+                productName: cartItem.product.name,
+                price: cartItem.product.price,
+                quantity: cartItem.quantity,
+                total: cartItem.product.price * cartItem.quantity,
+              );
+            }).toList(),
+          );
+
+          final db = DatabaseService();
+          transactionId = await db.insertTransaction(transaction);
+
+          for (final item in transaction.items) {
+            await db.insertTransactionItem(
+              TransactionItem(
+                transactionId: transactionId,
+                productName: item.productName,
+                price: item.price,
+                quantity: item.quantity,
+                total: item.total,
+              ),
+            );
+          }
+
+          if (fiscalData.isNotEmpty) {
+            await db.updateTransactionWithFiscalData(
+              transactionId,
+              fiscalData['fiscalReceiptNumber']?.toString(),
+              fiscalData['receiptISODateTime']?.toString(),
+              fiscalData['zRepNumber']?.toString(),
+              fiscalData['serialNumber']?.toString(),
+            );
+          }
+        } catch (e) {
+          debugPrint('Error saving transaction: $e');
+        }
+      }
+    }
 
     if (mounted) {
       showDialog(
@@ -816,45 +992,54 @@ class _CartPanelState extends State<CartPanel> {
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: successColor.withOpacity(0.1),
+                    color: (responseBody != null && errors.isEmpty)
+                        ? successColor.withOpacity(0.1)
+                        : const Color(0xFFFCA5A5).withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    Icons.check_circle_rounded,
-                    color: successColor,
+                    (responseBody != null && errors.isEmpty)
+                        ? Icons.check_circle_rounded
+                        : Icons.warning_rounded,
+                    color: (responseBody != null && errors.isEmpty)
+                        ? successColor
+                        : const Color(0xFFDC2626),
                     size: 36,
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Ordine Completato!',
-                  style: TextStyle(
+                  (responseBody != null && errors.isEmpty)
+                      ? 'Ordine Completato!'
+                      : 'Avvertenza Stampante',
+                  style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
                     color: textPrimary,
                   ),
                 ),
                 const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: hoverColor,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        '€${total.toStringAsFixed(2)}',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: successColor,
+                if (responseBody != null && errors.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: hoverColor,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          '€${total.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: successColor,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _getDisplayPaymentMethod(paymentMethod),
-                        style: TextStyle(
+                        const SizedBox(height: 4),
+                        Text(
+                          _getDisplayPaymentMethod(paymentMethod),
+                          style: const TextStyle(
                           fontSize: 13,
                           color: textSecondary,
                           fontWeight: FontWeight.w500,
@@ -862,27 +1047,103 @@ class _CartPanelState extends State<CartPanel> {
                       ),
                     ],
                   ),
-                ),
+                )
+                else
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDC2626).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: const Color(0xFFDC2626),
+                        width: 1,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (responseBody == null)
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Errore Stampa:',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFFDC2626),
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'La ricevuta non è stata stampata correttamente.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: textSecondary,
+                                ),
+                              ),
+                              SizedBox(height: 12),
+                            ],
+                          ),
+                        if (errors.isNotEmpty)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Errori Stampante:',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFFDC2626),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  errors.join('\n'),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: textSecondary,
+                                    fontFamily: 'monospace',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
                 const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
-                      widget.onClearCart();
-                      setState(() => _selectedPaymentMethod = null);
+                      if (responseBody != null && errors.isEmpty) {
+                        widget.onClearCart();
+                        setState(() => _selectedPaymentMethod = null);
+                      }
                       Navigator.pop(context);
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryColor,
+                      backgroundColor: (responseBody != null && errors.isEmpty)
+                          ? primaryColor
+                          : const Color(0xFFDC2626),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: const Text(
-                      'Nuovo Ordine',
-                      style: TextStyle(
+                    child: Text(
+                      (responseBody != null && errors.isEmpty)
+                          ? 'Nuovo Ordine'
+                          : 'Annulla',
+                      style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -934,6 +1195,8 @@ class CartItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isPhone = MediaQuery.of(context).size.width < 600;
+    
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -959,7 +1222,7 @@ class CartItemTile extends StatelessWidget {
                 Text(
                   item.product.name,
                   style: TextStyle(
-                    fontSize: 16, // Increased from 13
+                    fontSize: isPhone ? 13 : 16,
                     fontWeight: FontWeight.w600,
                     color: colors.textPrimary,
                   ),
@@ -979,7 +1242,7 @@ class CartItemTile extends StatelessWidget {
               Text(
                 '€${item.total.toStringAsFixed(2)}',
                 style: TextStyle(
-                  fontSize: 18, // Increased from 14
+                  fontSize: isPhone ? 15 : 18,
                   fontWeight: FontWeight.w700,
                   color: colors.textPrimary,
                 ),
@@ -1028,8 +1291,8 @@ class CartItemTile extends StatelessWidget {
                 
                 // Quantity display
                 Container(
-                  width: 44, // Wider display
-                  height: 40, // Taller display
+                  width: 44,
+                  height: 40,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     border: Border.symmetric(
@@ -1040,7 +1303,7 @@ class CartItemTile extends StatelessWidget {
                   child: Text(
                     item.quantity.toString(),
                     style: TextStyle(
-                      fontSize: 16, // Increased from 13
+                      fontSize: isPhone ? 13 : 16,
                       fontWeight: FontWeight.w700,
                       color: colors.textPrimary,
                     ),

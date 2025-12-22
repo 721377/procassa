@@ -1,4 +1,4 @@
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite/sqflite.dart' hide Transaction;
 import 'package:path/path.dart';
 import '../models.dart';
 
@@ -24,7 +24,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 7,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -48,6 +48,38 @@ class DatabaseService {
     }
     if (oldVersion < 4) {
       await db.execute('ALTER TABLE stampanti ADD COLUMN printerModel TEXT');
+    }
+    if (oldVersion < 5) {
+      await db.execute('''
+        CREATE TABLE transactions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TEXT NOT NULL,
+          total REAL NOT NULL,
+          paymentMethod TEXT NOT NULL,
+          isReturn INTEGER DEFAULT 0,
+          notes TEXT
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE transaction_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          transactionId INTEGER NOT NULL,
+          productName TEXT NOT NULL,
+          price REAL NOT NULL,
+          quantity INTEGER NOT NULL,
+          total REAL NOT NULL,
+          FOREIGN KEY (transactionId) REFERENCES transactions(id)
+        )
+      ''');
+    }
+    if (oldVersion < 6) {
+      await db.execute('ALTER TABLE transactions ADD COLUMN fiscalReceiptNumber TEXT');
+      await db.execute('ALTER TABLE transactions ADD COLUMN receiptISODateTime TEXT');
+      await db.execute('ALTER TABLE transactions ADD COLUMN zRepNumber TEXT');
+      await db.execute('ALTER TABLE transactions ADD COLUMN serialNumber TEXT');
+    }
+    if (oldVersion < 7) {
+      await db.execute('ALTER TABLE transactions ADD COLUMN status INTEGER DEFAULT 0');
     }
   }
 
@@ -99,6 +131,34 @@ class DatabaseService {
       CREATE TABLE tipi_pagamento (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         descrizione TEXT NOT NULL UNIQUE
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE transactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        total REAL NOT NULL,
+        paymentMethod TEXT NOT NULL,
+        isReturn INTEGER DEFAULT 0,
+        notes TEXT,
+        fiscalReceiptNumber TEXT,
+        receiptISODateTime TEXT,
+        zRepNumber TEXT,
+        serialNumber TEXT,
+        status INTEGER DEFAULT 0
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE transaction_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        transactionId INTEGER NOT NULL,
+        productName TEXT NOT NULL,
+        price REAL NOT NULL,
+        quantity INTEGER NOT NULL,
+        total REAL NOT NULL,
+        FOREIGN KEY (transactionId) REFERENCES transactions(id)
       )
     ''');
   }
@@ -274,5 +334,143 @@ class DatabaseService {
     
     if (maps.isEmpty) return null;
     return Stampante.fromMap(maps[0]);
+  }
+
+  Future<int> insertTransaction(Transaction transaction) async {
+    final db = await database;
+    return await db.insert('transactions', transaction.toMap());
+  }
+
+  Future<int> insertTransactionItem(TransactionItem item) async {
+    final db = await database;
+    return await db.insert('transaction_items', item.toMap());
+  }
+
+  Future<List<Transaction>> getTransactions({
+    DateTime? startDate,
+    DateTime? endDate,
+    String? paymentMethod,
+    bool? isReturn,
+  }) async {
+    final db = await database;
+    
+    String whereClause = '';
+    List<dynamic> whereArgs = [];
+
+    if (startDate != null) {
+      whereClause += 'date >= ?';
+      whereArgs.add(startDate.toIso8601String());
+    }
+
+    if (endDate != null) {
+      if (whereClause.isNotEmpty) whereClause += ' AND ';
+      whereClause += 'date <= ?';
+      whereArgs.add(endDate.toIso8601String());
+    }
+
+    if (paymentMethod != null) {
+      if (whereClause.isNotEmpty) whereClause += ' AND ';
+      whereClause += 'paymentMethod = ?';
+      whereArgs.add(paymentMethod);
+    }
+
+    if (isReturn != null) {
+      if (whereClause.isNotEmpty) whereClause += ' AND ';
+      whereClause += 'status = ?';
+      whereArgs.add(isReturn ? 1 : 0);
+    }
+
+    final maps = await db.query(
+      'transactions',
+      where: whereClause.isEmpty ? null : whereClause,
+      whereArgs: whereArgs.isEmpty ? null : whereArgs,
+      orderBy: 'date DESC',
+    );
+
+    final transactions = <Transaction>[];
+    for (final map in maps) {
+      final transaction = Transaction.fromMap(map as Map<String, dynamic>);
+      final itemMaps = await db.query(
+        'transaction_items',
+        where: 'transactionId = ?',
+        whereArgs: [transaction.id],
+      );
+      transaction.items.addAll(
+        (itemMaps as List<Map<String, dynamic>>).map((m) => TransactionItem.fromMap(m)).toList(),
+      );
+      transactions.add(transaction);
+    }
+
+    return transactions;
+  }
+
+  Future<Transaction?> getTransactionById(int id) async {
+    final db = await database;
+    final maps = await db.query(
+      'transactions',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    if (maps.isEmpty) return null;
+
+    final transaction = Transaction.fromMap(maps[0]);
+    final itemMaps = await db.query(
+      'transaction_items',
+      where: 'transactionId = ?',
+      whereArgs: [transaction.id],
+    );
+    transaction.items.addAll(
+      itemMaps.map((m) => TransactionItem.fromMap(m)).toList(),
+    );
+
+    return transaction;
+  }
+
+  Future<int> deleteTransaction(int id) async {
+    final db = await database;
+    await db.delete(
+      'transaction_items',
+      where: 'transactionId = ?',
+      whereArgs: [id],
+    );
+    return await db.delete(
+      'transactions',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<int> updateTransactionWithFiscalData(
+    int transactionId,
+    String? fiscalReceiptNumber,
+    String? receiptISODateTime,
+    String? zRepNumber,
+    String? serialNumber,
+  ) async {
+    final db = await database;
+    return await db.update(
+      'transactions',
+      {
+        'fiscalReceiptNumber': fiscalReceiptNumber,
+        'receiptISODateTime': receiptISODateTime,
+        'zRepNumber': zRepNumber,
+        'serialNumber': serialNumber,
+      },
+      where: 'id = ?',
+      whereArgs: [transactionId],
+    );
+  }
+
+  Future<int> updateTransactionStatus(
+    int transactionId,
+    int status,
+  ) async {
+    final db = await database;
+    return await db.update(
+      'transactions',
+      {'status': status},
+      where: 'id = ?',
+      whereArgs: [transactionId],
+    );
   }
 }

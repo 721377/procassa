@@ -24,7 +24,7 @@ class _StampantiScreenState extends State<StampantiScreen> {
       TextEditingController();
 
   // Bluetooth related variables
-  List<BluetoothDevice> _availableDevices = [];
+  final List<BluetoothDevice> _availableDevices = [];
   bool _isScanning = false;
   StreamSubscription<List<ScanResult>>? _scanSubscription;
   BluetoothDevice? _selectedBluetoothDevice;
@@ -48,7 +48,7 @@ class _StampantiScreenState extends State<StampantiScreen> {
 
   Future<void> _loadConnectedDevices() async {
     try {
-      final connectedDevices = await FlutterBluePlus.connectedDevices;
+      final connectedDevices = FlutterBluePlus.connectedDevices;
       if (mounted && connectedDevices.isNotEmpty) {
         setState(() {
           for (var device in connectedDevices) {
@@ -724,7 +724,7 @@ class _StampantiScreenState extends State<StampantiScreen> {
                             ),
                           ),
                           if (isSelected)
-                            Icon(
+                            const Icon(
                               Icons.check_circle_rounded,
                               color: Colors.blue,
                               size: 22,
@@ -896,7 +896,7 @@ class _StampantiScreenState extends State<StampantiScreen> {
   }
 
   void _showBluetoothDeviceSelector() {
-    int _selectedTabIndex = 0;
+    int selectedTabIndex = 0;
     final manualAddressController = TextEditingController();
     final manualNameController = TextEditingController();
     
@@ -941,9 +941,9 @@ class _StampantiScreenState extends State<StampantiScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
+                            const Text(
                               'Seleziona Stampante Bluetooth',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -962,13 +962,13 @@ class _StampantiScreenState extends State<StampantiScreen> {
                           children: [
                             Expanded(
                               child: GestureDetector(
-                                onTap: () => setState(() => _selectedTabIndex = 0),
+                                onTap: () => setState(() => selectedTabIndex = 0),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(vertical: 12),
                                   decoration: BoxDecoration(
                                     border: Border(
                                       bottom: BorderSide(
-                                        color: _selectedTabIndex == 0
+                                        color: selectedTabIndex == 0
                                             ? Colors.blue
                                             : Colors.transparent,
                                         width: 3,
@@ -981,7 +981,7 @@ class _StampantiScreenState extends State<StampantiScreen> {
                                       Icon(
                                         Icons.search_rounded,
                                         size: 18,
-                                        color: _selectedTabIndex == 0
+                                        color: selectedTabIndex == 0
                                             ? Colors.blue
                                             : Colors.grey,
                                       ),
@@ -991,7 +991,7 @@ class _StampantiScreenState extends State<StampantiScreen> {
                                         style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w600,
-                                          color: _selectedTabIndex == 0
+                                          color: selectedTabIndex == 0
                                               ? Colors.blue
                                               : Colors.grey,
                                         ),
@@ -1003,13 +1003,13 @@ class _StampantiScreenState extends State<StampantiScreen> {
                             ),
                             Expanded(
                               child: GestureDetector(
-                                onTap: () => setState(() => _selectedTabIndex = 1),
+                                onTap: () => setState(() => selectedTabIndex = 1),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(vertical: 12),
                                   decoration: BoxDecoration(
                                     border: Border(
                                       bottom: BorderSide(
-                                        color: _selectedTabIndex == 1
+                                        color: selectedTabIndex == 1
                                             ? Colors.blue
                                             : Colors.transparent,
                                         width: 3,
@@ -1022,7 +1022,7 @@ class _StampantiScreenState extends State<StampantiScreen> {
                                       Icon(
                                         Icons.edit_rounded,
                                         size: 18,
-                                        color: _selectedTabIndex == 1
+                                        color: selectedTabIndex == 1
                                             ? Colors.blue
                                             : Colors.grey,
                                       ),
@@ -1032,7 +1032,7 @@ class _StampantiScreenState extends State<StampantiScreen> {
                                         style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w600,
-                                          color: _selectedTabIndex == 1
+                                          color: selectedTabIndex == 1
                                               ? Colors.blue
                                               : Colors.grey,
                                         ),
@@ -1046,7 +1046,7 @@ class _StampantiScreenState extends State<StampantiScreen> {
                         ),
                       ),
                       Expanded(
-                        child: _selectedTabIndex == 0
+                        child: selectedTabIndex == 0
                             ? _buildScannedDevicesList(scrollController)
                             : _buildManualEntryForm(
                                 manualNameController,

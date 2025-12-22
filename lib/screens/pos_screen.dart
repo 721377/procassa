@@ -1,5 +1,7 @@
 // screens/pos_screen.dart
 import 'package:flutter/material.dart';
+import 'package:procassa/screens/statistiche_screen.dart';
+import 'package:procassa/screens/transazioni_screen.dart';
 import 'package:procassa/widgets/numeric_keyboard.dart';
 import '../models.dart';
 import '../widgets/cart_panel.dart';
@@ -7,10 +9,7 @@ import '../widgets/product_card.dart';
 import '../services/cart_functions.dart';
 import '../services/database_service.dart';
 import '../services/printing_service.dart';
-import 'categorie_screen.dart';
-import 'articoli_screen.dart';
 import 'stampanti_screen.dart';
-import 'statistiche_screen.dart';
 import 'impostazioni_screen.dart';
 import 'anagrafica_screen.dart';
 
@@ -33,12 +32,12 @@ class _PosScreenState extends State<PosScreen> {
   int? _selectedCategoriaId;
   final TextEditingController _searchController = TextEditingController();
   late bool _showCart;
-  String _keypadQuantity = '';
-  String _keypadPrice = '';
-  String _keypadMode = 'price';
+  String _keypadFirstNumber = '';
+  String _keypadSecondNumber = '';
+  bool _keypadXPressed = false;
   bool _showKeypad = false;
   bool _keypadModeActive = false;
-  String _selectedMenu = 'pos';
+  final String _selectedMenu = 'pos';
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
@@ -80,6 +79,7 @@ class _PosScreenState extends State<PosScreen> {
 
   bool get _isSmallScreen => MediaQuery.of(context).size.width < 768;
   bool get _isMediumScreen =>
+
       MediaQuery.of(context).size.width >= 768 &&
       MediaQuery.of(context).size.width < 1024;
   bool get _isLargeScreen => MediaQuery.of(context).size.width >= 1024;
@@ -122,32 +122,33 @@ class _PosScreenState extends State<PosScreen> {
 
   void _handleNumberInput(String number) {
     setState(() {
-      if (_keypadMode == 'quantity') {
-        _keypadQuantity += number;
+      if (_keypadXPressed) {
+        _keypadSecondNumber += number;
       } else {
-        _keypadPrice += number;
+        _keypadFirstNumber += number;
       }
     });
   }
 
   void _clearKeypad() {
     setState(() {
-      _keypadQuantity = '';
-      _keypadPrice = '';
-      _keypadMode = 'quantity';
+      _keypadFirstNumber = '';
+      _keypadSecondNumber = '';
+      _keypadXPressed = false;
     });
   }
 
   void _handleBackspace() {
     setState(() {
-      if (_keypadMode == 'quantity') {
-        if (_keypadQuantity.isNotEmpty) {
-          _keypadQuantity =
-              _keypadQuantity.substring(0, _keypadQuantity.length - 1);
+      if (_keypadXPressed) {
+        if (_keypadSecondNumber.isNotEmpty) {
+          _keypadSecondNumber =
+              _keypadSecondNumber.substring(0, _keypadSecondNumber.length - 1);
         }
       } else {
-        if (_keypadPrice.isNotEmpty) {
-          _keypadPrice = _keypadPrice.substring(0, _keypadPrice.length - 1);
+        if (_keypadFirstNumber.isNotEmpty) {
+          _keypadFirstNumber =
+              _keypadFirstNumber.substring(0, _keypadFirstNumber.length - 1);
         }
       }
     });
@@ -155,23 +156,21 @@ class _PosScreenState extends State<PosScreen> {
 
   void _handleXPress() {
     setState(() {
-      if (_keypadMode == 'price') {
-        _keypadMode = 'quantity';
-      } else {
-        _keypadMode = 'price';
+      if (_keypadFirstNumber.isNotEmpty && !_keypadXPressed) {
+        _keypadXPressed = true;
       }
     });
   }
 
   void _handleProductTapWithKeypad(Articolo articolo) {
-    final hasQuantity = _keypadQuantity.isNotEmpty;
-    final hasPrice = _keypadPrice.isNotEmpty;
+    final hasFirstNumber = _keypadFirstNumber.isNotEmpty;
+    final hasSecondNumber = _keypadSecondNumber.isNotEmpty;
 
-    if (!hasQuantity && !hasPrice) {
+    if (!hasFirstNumber) {
       _addToCartArticolo(articolo);
-    } else if (hasQuantity && hasPrice) {
-      final quantity = int.tryParse(_keypadQuantity) ?? 1;
-      final price = double.tryParse(_keypadPrice) ?? articolo.prezzo;
+    } else if (_keypadXPressed && hasSecondNumber) {
+      final quantity = int.tryParse(_keypadFirstNumber) ?? 1;
+      final price = double.tryParse(_keypadSecondNumber) ?? articolo.prezzo;
 
       final product = Product(
         id: articolo.id.toString(),
@@ -185,13 +184,13 @@ class _PosScreenState extends State<PosScreen> {
         CartFunctions.addToCart(_cartItems, product, quantity: quantity);
       });
       _clearKeypad();
-    } else if (hasQuantity) {
-      final quantity = int.tryParse(_keypadQuantity) ?? 1;
+    } else if (_keypadXPressed && !hasSecondNumber) {
+      final quantity = int.tryParse(_keypadFirstNumber) ?? 1;
       _addToCartArticolo(articolo, quantity: quantity);
       _clearKeypad();
-    } else if (hasPrice) {
-      final price = double.tryParse(_keypadPrice) ?? articolo.prezzo;
-      _addToCartArticoloWithCustomPrice(articolo, price);
+    } else if (!_keypadXPressed && hasFirstNumber) {
+      final quantity = int.tryParse(_keypadFirstNumber) ?? 1;
+      _addToCartArticolo(articolo, quantity: quantity);
       _clearKeypad();
     }
   }
@@ -249,7 +248,7 @@ class _PosScreenState extends State<PosScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         // Title
-                        Text(
+                        const Text(
                           'Select Order Printer',
                           style: TextStyle(
                             fontSize: 18,
@@ -295,7 +294,7 @@ class _PosScreenState extends State<PosScreen> {
                                             : Colors.grey.shade200,
                                         width: 1.2,
                                       ),
-                                      boxShadow: [
+                                      boxShadow: const [
                                         BoxShadow(
                                           color: Colors.black12,
                                           blurRadius: 4,
@@ -321,7 +320,7 @@ class _PosScreenState extends State<PosScreen> {
                                             children: [
                                               Text(
                                                 printer.nome,
-                                                style: TextStyle(
+                                                style: const TextStyle(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.w600,
                                                   color: Colors.black87,
@@ -330,7 +329,7 @@ class _PosScreenState extends State<PosScreen> {
                                               const SizedBox(height: 4),
                                               Text(
                                                 subtitle,
-                                                style: TextStyle(
+                                                style: const TextStyle(
                                                   fontSize: 14,
                                                   color: Colors.black54,
                                                 ),
@@ -674,7 +673,7 @@ class _PosScreenState extends State<PosScreen> {
             tooltip: 'Refresh',
           ),
           // Cart icon with badge
-          if (!_isSmallScreen || (_isSmallScreen && !_showCart && !_showKeypad))
+          if (!_isSmallScreen || (_isSmallScreen && !_showCart))
             Stack(
               children: [
                 IconButton(
@@ -798,6 +797,20 @@ class _PosScreenState extends State<PosScreen> {
                     );
                   },
                 ),
+                 _buildDrawerItem(
+                  icon: Icons.swap_horiz,
+                  text: 'Transazioni',
+                  selected: _selectedMenu == 'Transazioni',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const TransazioniScreen()),
+                    );
+                  },
+                ),
+                
                 _buildDrawerItem(
                   icon: Icons.bar_chart_outlined,
                   text: 'Statistiche',
@@ -811,6 +824,7 @@ class _PosScreenState extends State<PosScreen> {
                     );
                   },
                 ),
+               
                 _buildDrawerItem(
                   icon: Icons.settings_outlined,
                   text: 'Impostazioni',
@@ -994,7 +1008,7 @@ class _PosScreenState extends State<PosScreen> {
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                     child: Center(
                       child: Text(
-                        'Qtà: ${_keypadQuantity.isEmpty ? '0' : _keypadQuantity}',
+                        'Prezzo: ${_keypadFirstNumber.isEmpty ? '0' : _keypadFirstNumber}',
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -1019,7 +1033,9 @@ class _PosScreenState extends State<PosScreen> {
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                     child: Center(
                       child: Text(
-                        'Prezzo: ${_keypadPrice.isEmpty ? '0' : _keypadPrice}',
+                        _keypadXPressed
+                            ? 'Prezzo: ${_keypadSecondNumber.isEmpty ? '0' : _keypadSecondNumber}'
+                            : 'Qtà: ${_keypadFirstNumber.isEmpty ? '0' : _keypadFirstNumber}',
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -1101,7 +1117,7 @@ class _PosScreenState extends State<PosScreen> {
                             ),
                           ),
                           Text(
-                            _keypadQuantity.isEmpty ? '0' : _keypadQuantity,
+                            _keypadFirstNumber.isEmpty ? '0' : _keypadFirstNumber,
                             style: TextStyle(
                               fontSize: isSmallScreen ? 14 : 16,
                               fontWeight: FontWeight.bold,
@@ -1111,26 +1127,27 @@ class _PosScreenState extends State<PosScreen> {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Text(
-                            'Prezzo: ',
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 12 : 14,
-                              color: const Color(0xFF6B7280),
+                      if (_keypadXPressed)
+                        Row(
+                          children: [
+                            Text(
+                              'Prezzo: ',
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 12 : 14,
+                                color: const Color(0xFF6B7280),
+                              ),
                             ),
-                          ),
-                          Text(
-                            _keypadPrice.isEmpty ? '0' : _keypadPrice,
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 14 : 16,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF111827),
+                            Text(
+                              _keypadSecondNumber.isEmpty ? '0' : _keypadSecondNumber,
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 14 : 16,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF111827),
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      if (_keypadQuantity.isNotEmpty || _keypadPrice.isNotEmpty)
+                          ],
+                        ),
+                      if (_keypadFirstNumber.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
@@ -1147,56 +1164,57 @@ class _PosScreenState extends State<PosScreen> {
                 ],
               ),
             ),
-            Container(
-              margin: EdgeInsets.symmetric(
-                horizontal: isSmallScreen ? 12 : 16,
-                vertical: isSmallScreen ? 4 : 6,
-              ),
-              padding: EdgeInsets.symmetric(
-                horizontal: isSmallScreen ? 10 : 12,
-                vertical: isSmallScreen ? 4 : 6,
-              ),
-              decoration: BoxDecoration(
-                color: _keypadMode == 'quantity'
-                    ? const Color(0xFFDEF7EC).withOpacity(0.3)
-                    : const Color(0xFFFEF3C7).withOpacity(0.3),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _keypadMode == 'quantity'
-                        ? Icons.close
-                        : Icons.attach_money,
-                    size: isSmallScreen ? 12 : 14,
-                    color: _keypadMode == 'quantity'
-                        ? const Color(0xFF059669)
-                        : const Color(0xFFD97706),
-                  ),
-                  SizedBox(width: isSmallScreen ? 4 : 6),
-                  Text(
-                    _keypadMode == 'quantity'
-                        ? 'Modalità Qtà'
-                        : 'Modalità Prezzo',
-                    style: TextStyle(
-                      fontSize: isSmallScreen ? 11 : 13,
-                      color: _keypadMode == 'quantity'
+            if (_keypadFirstNumber.isNotEmpty)
+              Container(
+                margin: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 12 : 16,
+                  vertical: isSmallScreen ? 4 : 6,
+                ),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 10 : 12,
+                  vertical: isSmallScreen ? 4 : 6,
+                ),
+                decoration: BoxDecoration(
+                  color: _keypadXPressed
+                      ? const Color(0xFFDEF7EC).withOpacity(0.3)
+                      : const Color(0xFFFEF3C7).withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _keypadXPressed ? Icons.close : Icons.attach_money,
+                      size: isSmallScreen ? 12 : 14,
+                      color: _keypadXPressed
                           ? const Color(0xFF059669)
                           : const Color(0xFFD97706),
-                      fontWeight: FontWeight.w500,
                     ),
-                  ),
-                ],
+                    SizedBox(width: isSmallScreen ? 4 : 6),
+                    Text(
+                      _keypadXPressed ? 'Modalità Qtà' : 'Modalità Prezzo',
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 11 : 13,
+                        color: _keypadXPressed
+                            ? const Color(0xFF059669)
+                            : const Color(0xFFD97706),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
             Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: isSmallScreen ? 12 : 16,
                 vertical: isSmallScreen ? 4 : 6,
               ),
               child: Text(
-                'Premi Qtà per passare tra Quantità e Prezzo',
+                _keypadFirstNumber.isEmpty
+                    ? 'Inserisci Prezzo'
+                    : _keypadXPressed
+                        ? 'Inserisci Quantità'
+                        : 'Premi Qtà per aggiungere quantità',
                 style: TextStyle(
                   fontSize: isSmallScreen ? 11 : 13,
                   color: const Color(0xFF6B7280),
@@ -1305,17 +1323,17 @@ class _PosScreenState extends State<PosScreen> {
         // Products Grid
         Expanded(
           child: filteredList.isEmpty
-              ? Center(
+              ? const Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
                         Icons.search_off,
                         size: 48,
-                        color: const Color(0xFFD1D5DB),
+                        color: Color(0xFFD1D5DB),
                       ),
-                      const SizedBox(height: 16),
-                      const Text(
+                      SizedBox(height: 16),
+                      Text(
                         'No products found',
                         style: TextStyle(
                           fontSize: 16,
@@ -1361,14 +1379,15 @@ class _PosScreenState extends State<PosScreen> {
                     );
 
                     String? selectedPrice;
-                    if (_keypadQuantity.isNotEmpty || _keypadPrice.isNotEmpty) {
-                      final qtyText = _keypadQuantity.isNotEmpty
-                          ? 'Qty: ${_keypadQuantity}x '
-                          : '';
-                      final priceText =
-                          _keypadPrice.isNotEmpty ? '€${_keypadPrice}' : '';
-                      selectedPrice = '$qtyText$priceText'.trim();
-                    }
+                    // if (_keypadFirstNumber.isNotEmpty) {
+                    //   if (_keypadXPressed && _keypadSecondNumber.isNotEmpty) {
+                    //     selectedPrice = '€$_keypadFirstNumber x$_keypadSecondNumber';
+                    //   } else if (_keypadXPressed) {
+                    //     selectedPrice = 'Qtà: $_keypadFirstNumber';
+                    //   } else {
+                    //     selectedPrice = '€$_keypadFirstNumber';
+                    //   }
+                    // }
 
                     return ProductCard(
                       product: displayProduct,

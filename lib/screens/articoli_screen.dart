@@ -618,9 +618,9 @@ class _ArticoliScreenState extends State<ArticoliScreen> {
                       color: const Color(0xFF2D6FF1).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.inventory_2_outlined,
-                      color: const Color(0xFF2D6FF1),
+                      color: Color(0xFF2D6FF1),
                       size: 20,
                     ),
                   ),
