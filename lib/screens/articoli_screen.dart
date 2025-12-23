@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models.dart';
 import '../services/database_service.dart';
+import '../services/iva_handler.dart';
 
 class ArticoliScreen extends StatefulWidget {
   const ArticoliScreen({super.key});
@@ -22,6 +23,7 @@ class _ArticoliScreenState extends State<ArticoliScreen> {
   Articolo? _editingArticolo;
   int? _selectedCategoriaId;
   double? _selectedIvaValue;
+  String? _selectedIvaCode;
 
   @override
   void initState() {
@@ -37,6 +39,7 @@ class _ArticoliScreenState extends State<ArticoliScreen> {
     _codiceController.clear();
     _selectedCategoriaId = null;
     _selectedIvaValue = null;
+    _selectedIvaCode = null;
     _editingArticolo = null;
   }
 
@@ -45,6 +48,7 @@ class _ArticoliScreenState extends State<ArticoliScreen> {
       _descrizioneController.text = articolo.descrizione;
       _prezzoController.text = articolo.prezzo.toString();
       _selectedIvaValue = articolo.iva;
+      _selectedIvaCode = SimpleIvaManager.getCodeByRate(articolo.iva);
       _codiceController.text = articolo.codice;
       _selectedCategoriaId = articolo.categoriaId;
       _editingArticolo = articolo;
@@ -59,17 +63,19 @@ class _ArticoliScreenState extends State<ArticoliScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-          left: 24,
-          right: 24,
-          top: 24,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 24,
+            right: 24,
+            top: 24,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -239,8 +245,11 @@ class _ArticoliScreenState extends State<ArticoliScreen> {
                                   );
                                 }).toList(),
                                 onChanged: (value) {
-                                  setState(() {
+                                  setDialogState(() {
                                     _selectedIvaValue = value;
+                                    if (value != null) {
+                                      _selectedIvaCode = SimpleIvaManager.getCodeByRate(value);
+                                    }
                                   });
                                 },
                                 padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -253,6 +262,58 @@ class _ArticoliScreenState extends State<ArticoliScreen> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 16),
+
+            // Codice IVA
+            Text(
+              'Codice IVA (Opzionale)',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String?>(
+                  isExpanded: true,
+                  value: _selectedIvaCode,
+                  icon: const Icon(Icons.arrow_drop_down_rounded),
+                  borderRadius: BorderRadius.circular(12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  hint: const Text(
+                    'Seleziona codice IVA',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                  onChanged: (value) {
+                    setDialogState(() {
+                      _selectedIvaCode = value;
+                      if (value != null && SimpleIvaManager.isValid(value)) {
+                        _selectedIvaValue = SimpleIvaManager.getRate(value);
+                      }
+                    });
+                  },
+                  items: [
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('Nessuno'),
+                    ),
+                    ...SimpleIvaManager.getAllCodes().map((code) {
+                      final description = SimpleIvaManager.getDescription(code);
+                      return DropdownMenuItem<String?>(
+                        value: code,
+                        child: Text('$code - $description'),
+                      );
+                    }).toList(),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 16),
             
@@ -366,7 +427,9 @@ class _ArticoliScreenState extends State<ArticoliScreen> {
               ],
             ),
             const SizedBox(height: 24),
-          ],
+              ],
+            ),
+          ),
         ),
       ),
     );

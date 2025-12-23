@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 
-class NumericKeypad extends StatelessWidget {
+class NumericKeypad extends StatefulWidget {
   final Function(String) onNumberTap;
   final VoidCallback onClear;
   final VoidCallback onBackspace;
   final VoidCallback onXTap;
+  final VoidCallback? onPayment;
+  final VoidCallback? onPreAccount;
   final bool isCompact;
+  final double totalAmount;
+  final String? selectedPaymentMethod;
+  final VoidCallback? onShowPaymentModal;
+
 
   const NumericKeypad({
     super.key,
@@ -13,122 +19,480 @@ class NumericKeypad extends StatelessWidget {
     required this.onClear,
     required this.onBackspace,
     required this.onXTap,
+    this.onPayment,
+    this.onPreAccount,
     this.isCompact = false,
+    required this.totalAmount,
+    this.selectedPaymentMethod,
+    this.onShowPaymentModal,
   });
 
   @override
+  State<NumericKeypad> createState() => _NumericKeypadState();
+}
+
+class _NumericKeypadState extends State<NumericKeypad> {
+  String? _pressedKey;
+  bool _discountMode = false;
+
+  @override
   Widget build(BuildContext context) {
-    final isSmallScreen = MediaQuery.of(context).size.width < 768;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 768;
+    final isLargeScreen = screenWidth >= 1024;
+
+    final buttonSpacing = isSmallScreen ? 1.0 : 3.0;
     final buttonPadding = isSmallScreen ? 6.0 : 12.0;
-    final fontSize = isSmallScreen ? 15.0 : 19.0;
+    final fontSize = isSmallScreen ? 20.0 : 20.0;
+    final cornerRadius = 10.0;
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: isSmallScreen ? BorderRadius.circular(0) : BorderRadius.circular(8),
-        border: isSmallScreen ? null : Border.all(color: const Color(0xFFE5E7EB)),
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(isSmallScreen ? 0 : 16),
+        ),
       ),
       child: Column(
         children: [
-          Row(
-            children: [
-              _buildKey('1', buttonPadding, fontSize),
-              _buildKey('2', buttonPadding, fontSize),
-              _buildKey('3', buttonPadding, fontSize),
-            ],
+          // Top Section: Discount Toggle and Total Display
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.grey.shade200,
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                // Discount Toggle Button
+                Container(
+                  height: 35,
+                  decoration: BoxDecoration(
+                    color: _discountMode ? Colors.black : Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _discountMode ? Colors.black : Colors.grey.shade300,
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 3,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () {
+                        setState(() {
+                          _discountMode = !_discountMode;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.discount_outlined,
+                              size: 16,
+                              color: _discountMode ? Colors.white : Colors.grey.shade700,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'SCONTO',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: _discountMode ? Colors.white : Colors.grey.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                
+                // Total Display
+                Expanded(
+                  child: Container(
+                    height: 35,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4361EE).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFF4361EE).withOpacity(0.2),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'TOTALE',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade600,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        Text(
+                          '€${widget.totalAmount.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF4361EE),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (widget.selectedPaymentMethod != null) ...[
+                  const SizedBox(width: 12),
+
+                  // Payment Method Tag
+                  GestureDetector(
+                    onTap: widget.onShowPaymentModal,
+                    child: Container(
+                      height: 35,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF06D6A0).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: const Color(0xFF06D6A0).withOpacity(0.3),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            size: 14,
+                            color: const Color(0xFF06D6A0),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _getPaymentMethodLabel(widget.selectedPaymentMethod!),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF06D6A0),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
-          Row(
-            children: [
-              _buildKey('4', buttonPadding, fontSize),
-              _buildKey('5', buttonPadding, fontSize),
-              _buildKey('6', buttonPadding, fontSize),
-            ],
+
+          // Main Keypad - Numeric Buttons
+          Expanded(
+            child: Container(
+              padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
+              child: Column(
+                children: [
+                  // Row 1: 7 8 9 C
+                  Expanded(
+                    child: Row(
+                      children: [
+                        _buildKey('7', buttonSpacing, fontSize, cornerRadius),
+                        SizedBox(width: buttonSpacing),
+                        _buildKey('8', buttonSpacing, fontSize, cornerRadius),
+                        SizedBox(width: buttonSpacing),
+                        _buildKey('9', buttonSpacing, fontSize, cornerRadius),
+                        SizedBox(width: buttonSpacing),
+                        _buildSpecialKey(
+                          label: 'C',
+                          backgroundColor: const Color(0xFFEF476F),
+                          textColor: Colors.white,
+                          onTap: widget.onClear,
+                          spacing: buttonSpacing,
+                          fontSize: fontSize - 2,
+                          cornerRadius: cornerRadius,
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: buttonSpacing),
+                  
+                  // Row 2: 4 5 6 ←
+                  Expanded(
+                    child: Row(
+                      children: [
+                        _buildKey('4', buttonSpacing, fontSize, cornerRadius),
+                        SizedBox(width: buttonSpacing),
+                        _buildKey('5', buttonSpacing, fontSize, cornerRadius),
+                        SizedBox(width: buttonSpacing),
+                        _buildKey('6', buttonSpacing, fontSize, cornerRadius),
+                        SizedBox(width: buttonSpacing),
+                        _buildSpecialKey(
+                          icon: Icons.backspace_outlined,
+                          backgroundColor: Colors.white,
+                          textColor: Colors.grey.shade700,
+                          onTap: widget.onBackspace,
+                          spacing: buttonSpacing,
+                          fontSize: fontSize - 2,
+                          cornerRadius: cornerRadius,
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: buttonSpacing),
+                  
+                  // Row 3: 1 2 3 X
+                  Expanded(
+                    child: Row(
+                      children: [
+                        _buildKey('1', buttonSpacing, fontSize, cornerRadius),
+                        SizedBox(width: buttonSpacing),
+                        _buildKey('2', buttonSpacing, fontSize, cornerRadius),
+                        SizedBox(width: buttonSpacing),
+                        _buildKey('3', buttonSpacing, fontSize, cornerRadius),
+                        SizedBox(width: buttonSpacing),
+                        _buildSpecialKey(
+                          label: 'X',
+                          backgroundColor: const Color(0xFF4361EE),
+                          textColor: Colors.white,
+                          onTap: widget.onXTap,
+                          spacing: buttonSpacing,
+                          fontSize: fontSize - 2,
+                          cornerRadius: cornerRadius,
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: buttonSpacing),
+                  
+                  // Row 4: 0 . 00
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _buildKey('0', buttonSpacing, fontSize, cornerRadius),
+                        ),
+                        SizedBox(width: buttonSpacing),
+                        _buildSpecialKey(
+                          label: '.',
+                          backgroundColor: Colors.white,
+                          textColor: Colors.grey.shade700,
+                          onTap: () => widget.onNumberTap('.'),
+                          spacing: buttonSpacing,
+                          fontSize: fontSize,
+                          cornerRadius: cornerRadius,
+                        ),
+                        SizedBox(width: buttonSpacing),
+                        _buildSpecialKey(
+                          label: '00',
+                          backgroundColor: Colors.white,
+                          textColor: Colors.grey.shade700,
+                          onTap: () => widget.onNumberTap('00'),
+                          spacing: buttonSpacing,
+                          fontSize: fontSize - 2,
+                          cornerRadius: cornerRadius,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          Row(
-            children: [
-              _buildKey('7', buttonPadding, fontSize),
-              _buildKey('8', buttonPadding, fontSize),
-              _buildKey('9', buttonPadding, fontSize),
-            ],
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: _buildSpecialKey(
-                  label: 'Canc',
-                  backgroundColor: const Color(0xFFFEE2E2),
-                  textColor: const Color(0xFFDC2626),
-                  onTap: onClear,
-                  padding: buttonPadding,
-                  fontSize: fontSize - 2,
+
+          // Bottom Section: Preconto and Pagamento Buttons
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                top: BorderSide(
+                  color: Colors.grey.shade200,
+                  width: 1,
                 ),
               ),
-              Expanded(
-                child: _buildKey('0', buttonPadding, fontSize),
-              ),
-              Expanded(
-                child: _buildSpecialKey(
-                  label: 'X',
-                  backgroundColor: const Color(0xFFDEF7EC),
-                  textColor: const Color(0xFF059669),
-                  onTap: onXTap,
-                  padding: buttonPadding,
-                  fontSize: fontSize - 2,
+            ),
+            child: Row(
+              children: [
+                // Preconto Button
+                Expanded(
+                  child: Container(
+                    height: 50,
+                    margin: const EdgeInsets.only(right: 6),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: Colors.grey.shade300,
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: widget.onPreAccount,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.receipt_long_outlined,
+                                size: 18,
+                                color: Colors.grey.shade700,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'PRECONTO',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: _buildSpecialKey(
-                  label: '.',
-                  onTap: () => onNumberTap('.'),
-                  padding: buttonPadding,
-                  fontSize: fontSize,
+                
+                // Payment Button (Pagamento/Pagare)
+                Expanded(
+                  child: Container(
+                    height: 50,
+                    margin: const EdgeInsets.only(left: 6),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF06D6A0).withOpacity(0.2),
+                          blurRadius: 6,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: const Color(0xFF06D6A0),
+                      borderRadius: BorderRadius.circular(10),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: widget.selectedPaymentMethod != null
+                            ? widget.onPayment
+                            : widget.onShowPaymentModal,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                widget.selectedPaymentMethod != null
+                                    ? Icons.check_circle
+                                    : Icons.payment,
+                                size: 18,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                widget.selectedPaymentMethod != null
+                                    ? 'PAGARE'
+                                    : 'PAGAMENTO',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-              Expanded(
-                child: _buildSpecialKey(
-                  icon: Icons.backspace_outlined,
-                  onTap: onBackspace,
-                  padding: buttonPadding,
-                  fontSize: fontSize,
-                ),
-              ),
-              Expanded(
-                child: Container(
-                  margin: const EdgeInsets.all(1),
-                  color: Colors.white,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildKey(String number, double padding, double fontSize) {
+  Widget _buildKey(
+    String number,
+    double spacing,
+    double fontSize,
+    double cornerRadius,
+  ) {
+    final isPressed = _pressedKey == number;
+
     return Expanded(
       child: Container(
-      
+        margin: EdgeInsets.all(spacing),
         decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFD1D5DB), width: 0.5),
+          borderRadius: BorderRadius.circular(cornerRadius),
+          boxShadow: [
+            if (!isPressed)
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+          ],
         ),
-        child: TextButton(
-          onPressed: () => onNumberTap(number),
-          style: TextButton.styleFrom(
-            padding: EdgeInsets.symmetric(vertical: padding),
-            shape: const RoundedRectangleBorder(),
-            backgroundColor: Colors.white,
-          ),
-          child: Text(
-            number,
-            style: TextStyle(
-              fontSize: fontSize,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF111827),
+        child: Material(
+          color: isPressed ? const Color(0xFFE5E7EB) : Colors.white,
+          borderRadius: BorderRadius.circular(cornerRadius),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(cornerRadius),
+            onTapDown: (_) {
+              setState(() => _pressedKey = number);
+            },
+            onTapUp: (_) {
+              setState(() => _pressedKey = null);
+              widget.onNumberTap(number);
+            },
+            onTapCancel: () {
+              setState(() => _pressedKey = null);
+            },
+            child: Container(
+              alignment: Alignment.center,
+              child: Text(
+                number,
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF111827),
+                ),
+              ),
             ),
           ),
         ),
@@ -142,32 +506,85 @@ class NumericKeypad extends StatelessWidget {
     Color backgroundColor = Colors.white,
     Color textColor = const Color(0xFF111827),
     VoidCallback? onTap,
-    double padding = 12.0,
+    double spacing = 4.0,
     double fontSize = 16.0,
+    double cornerRadius = 8.0,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFFD1D5DB), width: 0.5),
-         color: backgroundColor, 
-      ),
-      child: TextButton(
-        onPressed: onTap,
-        style: TextButton.styleFrom(
-          padding: EdgeInsets.symmetric(vertical: padding),
-          shape: const RoundedRectangleBorder(),
-          // backgroundColor: backgroundColor,
-        ),
-        child: icon != null
-            ? Icon(icon, color: textColor, size: fontSize)
-            : Text(
-                label!,
-                style: TextStyle(
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.w600,
-                  color: textColor,
-                ),
+    final isPressed = _pressedKey == label;
+
+    return Expanded(
+      child: Container(
+        margin: EdgeInsets.all(spacing),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(cornerRadius),
+          boxShadow: [
+            if (!isPressed && backgroundColor == Colors.white)
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
               ),
+          ],
+        ),
+        child: Material(
+          color: isPressed
+              ? (backgroundColor == Colors.white
+                  ? const Color(0xFFE5E7EB)
+                  : backgroundColor.withOpacity(0.8))
+              : backgroundColor,
+          borderRadius: BorderRadius.circular(cornerRadius),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(cornerRadius),
+            onTapDown: (_) {
+              if (label != null) setState(() => _pressedKey = label);
+            },
+            onTapUp: (_) {
+              setState(() => _pressedKey = null);
+              onTap?.call();
+            },
+            onTapCancel: () {
+              setState(() => _pressedKey = null);
+            },
+            onTap: onTap,
+            child: Container(
+              alignment: Alignment.center,
+              child: icon != null
+                  ? Icon(
+                      icon,
+                      color: textColor,
+                      size: fontSize,
+                    )
+                  : Text(
+                      label!,
+                      style: TextStyle(
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                      ),
+                    ),
+            ),
+          ),
+        ),
       ),
     );
+  }
+
+  String _getPaymentMethodLabel(String method) {
+    switch (method) {
+      case 'CARTA':
+        return 'Carta';
+      case 'CONTANTE':
+        return 'Contanti';
+      case 'TICKET':
+        return 'Buono';
+      case 'SATISPAY':
+        return 'Satispay';
+      case 'TRANSFER':
+        return 'Bonifico';
+      case 'MOBILE':
+        return 'Mobile';
+      default:
+        return method;
+    }
   }
 }

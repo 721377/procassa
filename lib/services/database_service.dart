@@ -24,7 +24,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 7,
+      version: 9,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -81,6 +81,14 @@ class DatabaseService {
     if (oldVersion < 7) {
       await db.execute('ALTER TABLE transactions ADD COLUMN status INTEGER DEFAULT 0');
     }
+    if (oldVersion < 8) {
+      await db.execute('ALTER TABLE stampanti ADD COLUMN receiptPrinterType TEXT');
+      await db.execute('ALTER TABLE stampanti ADD COLUMN printerNumber TEXT');
+    }
+    if (oldVersion < 9) {
+      await db.execute('ALTER TABLE iva ADD COLUMN ivaCode TEXT');
+      await db.execute('ALTER TABLE iva ADD COLUMN department INTEGER');
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -95,7 +103,9 @@ class DatabaseService {
       CREATE TABLE iva (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nome TEXT NOT NULL UNIQUE,
-        valore REAL NOT NULL
+        valore REAL NOT NULL,
+        ivaCode TEXT,
+        department INTEGER
       )
     ''');
 
@@ -123,7 +133,9 @@ class DatabaseService {
     orderPrinterType TEXT,
     bluetoothAddress TEXT,
     isDefault INTEGER DEFAULT 0,
-    printerModel TEXT
+    printerModel TEXT,
+    receiptPrinterType TEXT,
+    printerNumber TEXT
   )
     ''');
 

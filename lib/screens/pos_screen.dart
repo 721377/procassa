@@ -1,5 +1,6 @@
 // screens/pos_screen.dart
 import 'package:flutter/material.dart';
+import 'dart:ui' as ui;
 import 'package:procassa/screens/statistiche_screen.dart';
 import 'package:procassa/screens/transazioni_screen.dart';
 import 'package:procassa/widgets/numeric_keyboard.dart';
@@ -9,9 +10,11 @@ import '../widgets/product_card.dart';
 import '../services/cart_functions.dart';
 import '../services/database_service.dart';
 import '../services/printing_service.dart';
+import '../services/payment_service.dart';
 import 'stampanti_screen.dart';
 import 'impostazioni_screen.dart';
 import 'anagrafica_screen.dart';
+import 'articoli_screen.dart';
 
 class PosScreen extends StatefulWidget {
   const PosScreen({super.key});
@@ -23,6 +26,7 @@ class PosScreen extends StatefulWidget {
 class _PosScreenState extends State<PosScreen> {
   final DatabaseService _db = DatabaseService();
   final PrintingService _printingService = PrintingService();
+  final PaymentService _paymentService = PaymentService();
 
   List<Categoria> categories = [];
   List<Articolo> products = [];
@@ -39,6 +43,10 @@ class _PosScreenState extends State<PosScreen> {
   bool _keypadModeActive = false;
   final String _selectedMenu = 'pos';
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  String? _selectedPaymentMethod;
+  static const Color surfaceColor = Colors.white; // Card surface
+  static const Color textSecondary = Color(0xFF6C757D); // Secondary text
+// Hover color
 
   @override
   void initState() {
@@ -79,7 +87,6 @@ class _PosScreenState extends State<PosScreen> {
 
   bool get _isSmallScreen => MediaQuery.of(context).size.width < 768;
   bool get _isMediumScreen =>
-
       MediaQuery.of(context).size.width >= 768 &&
       MediaQuery.of(context).size.width < 1024;
   bool get _isLargeScreen => MediaQuery.of(context).size.width >= 1024;
@@ -189,8 +196,19 @@ class _PosScreenState extends State<PosScreen> {
       _addToCartArticolo(articolo, quantity: quantity);
       _clearKeypad();
     } else if (!_keypadXPressed && hasFirstNumber) {
-      final quantity = int.tryParse(_keypadFirstNumber) ?? 1;
-      _addToCartArticolo(articolo, quantity: quantity);
+      final price = double.tryParse(_keypadFirstNumber) ?? articolo.prezzo;
+
+      final product = Product(
+        id: articolo.id.toString(),
+        name: articolo.descrizione,
+        category: articolo.categoriaId.toString(),
+        price: price,
+        description: articolo.descrizione,
+      );
+
+      setState(() {
+        CartFunctions.addToCart(_cartItems, product, quantity: 1);
+      });
       _clearKeypad();
     }
   }
@@ -240,112 +258,176 @@ class _PosScreenState extends State<PosScreen> {
               context: context,
               builder: (context) => StatefulBuilder(
                 builder: (context, setState) => Dialog(
+                  backgroundColor: Colors.white,
+                  insetPadding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Title
-                        const Text(
-                          'Select Order Printer',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black87,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  elevation: 0,
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Header
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Select Printer',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[900],
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: () => Navigator.pop(context),
+                                icon: Icon(Icons.close_rounded,
+                                    size: 20, color: Colors.grey[600]),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        // Printer Options
-                        Flexible(
-                          child: SingleChildScrollView(
-                            child: Column(
-                              children: orderPrinters.map((printer) {
-                                final subtitle = printer.printerModel ==
-                                        'Sunmi Pro'
-                                    ? 'Sunmi Pro (Interno)'
-                                    : (printer.orderPrinterType == 'IP'
-                                        ? '${printer.indirizzoIp}:${printer.porta}'
-                                        : printer.bluetoothAddress ??
-                                            'Bluetooth');
+                          const SizedBox(height: 4),
+                          Text(
+                            'Choose a printer for your order',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
 
-                                final isSelected = selectedPrinter == printer;
+                          // Printer List
+                          Flexible(
+                            child: SingleChildScrollView(
+                              child: Column(
+                                children: orderPrinters.map((printer) {
+                                  final subtitle = printer.printerModel ==
+                                          'Sunmi Pro'
+                                      ? 'Sunmi Pro (Internal)'
+                                      : (printer.orderPrinterType == 'IP'
+                                          ? '${printer.indirizzoIp}:${printer.porta}'
+                                          : printer.bluetoothAddress ??
+                                              'Bluetooth');
 
-                                return GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      selectedPrinter = printer;
-                                    });
-                                    Navigator.pop(context, printer);
-                                  },
-                                  child: Container(
-                                    margin:
-                                        const EdgeInsets.symmetric(vertical: 6),
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
+                                  final isSelected = selectedPrinter == printer;
+
+                                  return Container(
+                                    margin: const EdgeInsets.only(bottom: 8),
+                                    child: Material(
                                       color: isSelected
-                                          ? Colors.blue.shade50
-                                          : Colors.grey.shade50,
+                                          ? Colors.blue.withOpacity(0.08)
+                                          : Colors.transparent,
                                       borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: isSelected
-                                            ? Colors.blue
-                                            : Colors.grey.shade200,
-                                        width: 1.2,
-                                      ),
-                                      boxShadow: const [
-                                        BoxShadow(
-                                          color: Colors.black12,
-                                          blurRadius: 4,
-                                          offset: Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          isSelected
-                                              ? Icons.radio_button_checked
-                                              : Icons.radio_button_off,
-                                          color: isSelected
-                                              ? Colors.blue
-                                              : Colors.grey,
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
+                                      child: InkWell(
+                                        onTap: () {
+                                          setState(() {
+                                            selectedPrinter = printer;
+                                          });
+                                          Navigator.pop(context, printer);
+                                        },
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 14,
+                                          ),
+                                          child: Row(
                                             children: [
-                                              Text(
-                                                printer.nome,
-                                                style: const TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Colors.black87,
+                                              // Selection indicator
+                                              Container(
+                                                width: 20,
+                                                height: 20,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  border: Border.all(
+                                                    color: isSelected
+                                                        ? Colors.blue
+                                                        : Colors.grey[400]!,
+                                                    width: isSelected ? 6 : 2,
+                                                  ),
                                                 ),
                                               ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                subtitle,
-                                                style: const TextStyle(
-                                                  fontSize: 14,
-                                                  color: Colors.black54,
+                                              const SizedBox(width: 16),
+
+                                              // Printer info
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      printer.nome,
+                                                      style: TextStyle(
+                                                        fontSize: 16,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                        color: Colors.grey[900],
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 2),
+                                                    Text(
+                                                      subtitle,
+                                                      style: TextStyle(
+                                                        fontSize: 13,
+                                                        color: Colors.grey[600],
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
+
+                                              // Status indicator
+                                              if (isSelected)
+                                                Icon(
+                                                  Icons.check_circle_rounded,
+                                                  color: Colors.blue,
+                                                  size: 20,
+                                                ),
                                             ],
                                           ),
                                         ),
-                                      ],
+                                      ),
                                     ),
-                                  ),
-                                );
-                              }).toList(),
+                                  );
+                                }).toList(),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+
+                          // Cancel Button
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            child: TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.grey[700],
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Text(
+                                'Cancel',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -424,6 +506,382 @@ class _PosScreenState extends State<PosScreen> {
     }
   }
 
+  void _showPaymentMethodModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Metodo di Pagamento',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey[900],
+                ),
+              ),
+              const SizedBox(height: 24),
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 3,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                children: [
+                  _buildPaymentOption('CARTA', Icons.credit_card_rounded, const Color(0xFF4361EE)),
+                  _buildPaymentOption('CONTANTE', Icons.money_rounded, const Color(0xFF06D6A0)),
+                  _buildPaymentOption('TICKET', Icons.receipt_long_rounded, const Color(0xFFFFD166)),
+                  _buildPaymentOption('SATISPAY', Icons.phone_android_rounded, const Color(0xFF3A0CA3)),
+                  _buildPaymentOption('TRANSFER', Icons.account_balance_rounded, const Color(0xFF4CC9F0)),
+                  _buildPaymentOption('MOBILE', Icons.wallet_rounded, const Color(0xFF7209B7)),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentOption(String method, IconData icon, Color color) {
+    return GestureDetector(
+      onTap: () {
+        setState(() => _selectedPaymentMethod = method);
+        Navigator.pop(context);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(11),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.grey[300]!, width: 1),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 25),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              method == 'CARTA' ? 'Carta' :
+              method == 'CONTANTE' ? 'Contanti' :
+              method == 'TICKET' ? 'Buono' :
+              method == 'SATISPAY' ? 'Satispay' :
+              method == 'TRANSFER' ? 'Bonifico' :
+              'Mobile',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+   Future<void> _processPayment(double total) async {
+    if (_cartItems.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cart is empty')),
+      );
+      return;
+    }
+
+    final paymentMethod = _selectedPaymentMethod ?? 'CONTANTE';
+
+    final items = _cartItems.map((cartItem) {
+      return {
+        'name': cartItem.product.name,
+        'price': cartItem.product.price,
+        'quantity': cartItem.quantity,
+      };
+    }).toList();
+
+    final responseBody = await _paymentService.printReceiptAndGetResponse(
+      items,
+      total,
+      paymentMethod,
+    );
+
+    final errors = <String>[];
+    bool hasPaperWarning = false;
+    Map<String, String> statusSegments = {};
+    Map<String, dynamic> fiscalData = {};
+    int transactionId = 0;
+
+    if (responseBody != null) {
+      fiscalData = _paymentService.parsePrinterResponse(responseBody);
+      statusSegments =
+          (fiscalData['statusSegments'] as Map<String, String>?) ?? {};
+
+      if (statusSegments.isNotEmpty) {
+        _paymentService.validatePrinterStatus(statusSegments, errors);
+        hasPaperWarning = _paymentService.checkPaperWarning(statusSegments);
+      }
+
+      if (hasPaperWarning && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.white),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Attenzione: Carta in esaurimento. Sostituire il rotolo al più presto.',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 5),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+
+      if (errors.isEmpty) {
+        transactionId = await _paymentService.saveTransaction(
+          total,
+          paymentMethod,
+          _cartItems,
+        );
+
+        if (transactionId > 0) {
+          await _paymentService.updateTransactionWithFiscalData(
+            transactionId,
+            fiscalData,
+          );
+        }
+      }
+    }
+
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Dialog(
+          backgroundColor: surfaceColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: 420, // 👈 keeps dialog compact on large screens
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: (responseBody != null && errors.isEmpty)
+                          ? const Color(0xFF06D6A0).withOpacity(0.1)
+                          : const Color(0xFFFCA5A5).withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      (responseBody != null && errors.isEmpty)
+                          ? Icons.check_circle_rounded
+                          : Icons.warning_rounded,
+                      color: (responseBody != null && errors.isEmpty)
+                          ? const Color(0xFF06D6A0)
+                          : const Color(0xFFDC2626),
+                      size: 36,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    (responseBody != null && errors.isEmpty)
+                        ? 'Ordine Completato!'
+                        : 'Avvertenza Stampante',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF212529),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (responseBody != null && errors.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE9F5FF),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            '€${total.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF06D6A0),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _paymentService.getPaymentMethodLabel(paymentMethod),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF6C757D),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDC2626).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: const Color(0xFFDC2626),
+                          width: 1,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (responseBody == null)
+                            const Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Errore Stampa:',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFFDC2626),
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  'La ricevuta non è stata stampata. La stampante non risponde.',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: textSecondary,
+                                  ),
+                                ),
+                                SizedBox(height: 12),
+                              ],
+                            ),
+                          if (errors.isNotEmpty)
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Errori Stampante:',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFFDC2626),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    errors.join('\n'),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: textSecondary,
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (responseBody != null && errors.isEmpty) {
+                          _clearCart();
+                          setState(() => _selectedPaymentMethod = null);
+                        }
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            (responseBody != null && errors.isEmpty)
+                                ? const Color(0xFF4361EE)
+                                : const Color(0xFFDC2626),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Text(
+                        (responseBody != null && errors.isEmpty)
+                            ? 'Nuovo Ordine'
+                            : 'Annulla',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
   void _addToCartArticolo(Articolo articolo, {int quantity = 1}) {
     setState(() {
       final product = Product(
@@ -432,6 +890,7 @@ class _PosScreenState extends State<PosScreen> {
         category: articolo.categoriaId.toString(),
         price: articolo.prezzo,
         description: articolo.descrizione,
+        iva: articolo.iva,
       );
       CartFunctions.addToCart(_cartItems, product, quantity: quantity);
     });
@@ -445,6 +904,7 @@ class _PosScreenState extends State<PosScreen> {
         category: articolo.categoriaId.toString(),
         price: price,
         description: articolo.descrizione,
+        iva: articolo.iva,
       );
       CartFunctions.addToCartWithCustomPrice(_cartItems, product, price);
     });
@@ -658,13 +1118,11 @@ class _PosScreenState extends State<PosScreen> {
                       fillColor: const Color(0xFFF9FAFB),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(22),
-                        borderSide:
-                            const BorderSide(color: Color(0xFFE5E7EB)),
+                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(22),
-                        borderSide:
-                            const BorderSide(color: Color(0xFFE5E7EB)),
+                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(22),
@@ -820,7 +1278,7 @@ class _PosScreenState extends State<PosScreen> {
                     );
                   },
                 ),
-                 _buildDrawerItem(
+                _buildDrawerItem(
                   icon: Icons.swap_horiz,
                   text: 'Transazioni',
                   selected: _selectedMenu == 'Transazioni',
@@ -833,7 +1291,6 @@ class _PosScreenState extends State<PosScreen> {
                     );
                   },
                 ),
-                
                 _buildDrawerItem(
                   icon: Icons.bar_chart_outlined,
                   text: 'Statistiche',
@@ -847,7 +1304,6 @@ class _PosScreenState extends State<PosScreen> {
                     );
                   },
                 ),
-               
                 _buildDrawerItem(
                   icon: Icons.settings_outlined,
                   text: 'Impostazioni',
@@ -908,13 +1364,60 @@ class _PosScreenState extends State<PosScreen> {
       );
     }
 
-    // Desktop layout
+    // Desktop layout - Wide screen (Vertical split: Products + Cart right with integrated keypad)
+    if (_isLargeScreen) {
+      return Row(
+        children: [
+          // Products Panel (Left)
+          Expanded(
+            flex: 3,
+            child: _buildProductsPanel(filteredList),
+          ),
+
+          // Cart Panel (Right - with integrated keypad)
+          if (_showCart)
+            Container(
+              width: 420,
+              constraints: const BoxConstraints(
+                maxWidth: 420,
+                minWidth: 420,
+              ),
+              decoration: const BoxDecoration(
+                border: Border(
+                  left: BorderSide(color: Color(0xFFE5E7EB), width: 1),
+                ),
+              ),
+              child: CartPanel(
+                cartItems: _cartItems,
+                totalAmount: totalAmount,
+                totalItems: totalItems,
+                onUpdateQuantity: _updateQuantity,
+                onRemoveItem: _removeFromCart,
+                onClearCart: _clearCart,
+                keypadNumber: '',
+                onNumberTap: _handleNumberInput,
+                onClear: _clearKeypad,
+                onBackspace: _handleBackspace,
+                onXTap: _handleXPress,
+                xPressed: false,
+                onCloseCart: () => setState(() {
+                  _showCart = false;
+                }),
+                onOpenKeypad: _toggleKeypad,
+                onPrint: _handlePrint,
+              ),
+            ),
+        ],
+      );
+    }
+
+    // Medium screen layout - Cart on right with Keypad above or below
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Products Panel
         Expanded(
-          flex: _showKeypad ? 2 : (_showCart ? 3 : 4),
+          flex: _showKeypad ? 2 : 3,
           child: _buildProductsPanel(filteredList),
         ),
 
@@ -944,7 +1447,6 @@ class _PosScreenState extends State<PosScreen> {
               }),
               onOpenKeypad: _toggleKeypad,
               onPrint: _handlePrint,
-              // onPaymentProcessed: _printPaymentReceipt,
             ),
           )
         else if (_showKeypad)
@@ -954,7 +1456,7 @@ class _PosScreenState extends State<PosScreen> {
               maxWidth: 380,
               minWidth: 380,
             ),
-            child: _buildDesktopKeypadPanel(),
+            // child: _buildDesktopKeypadPanel(),
           ),
       ],
     );
@@ -988,7 +1490,7 @@ class _PosScreenState extends State<PosScreen> {
       children: [
         // Products Panel (Top)
         Expanded(
-          flex: 1,
+          flex: 2,
           child: _buildProductsPanel(filteredList),
         ),
 
@@ -1000,7 +1502,7 @@ class _PosScreenState extends State<PosScreen> {
 
         // Keypad Panel (Bottom)
         Expanded(
-          flex: 1,
+          flex: 2,
           child: _buildMobileKeypadPanel(),
         ),
       ],
@@ -1009,91 +1511,25 @@ class _PosScreenState extends State<PosScreen> {
 
   Widget _buildMobileKeypadPanel() {
     return Container(
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: Colors.grey[300]!)),
+      decoration: const BoxDecoration(
         color: Colors.white,
       ),
       child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border:
-                          Border.all(color: const Color(0xFFE5E7EB), width: 1),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                    child: Center(
-                      child: Text(
-                        'Prezzo: ${_keypadFirstNumber.isEmpty ? '0' : _keypadFirstNumber}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF111827),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  flex: 5,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border:
-                          Border.all(color: const Color(0xFFE5E7EB), width: 1),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                    child: Center(
-                      child: Text(
-                        _keypadXPressed
-                            ? 'Prezzo: ${_keypadSecondNumber.isEmpty ? '0' : _keypadSecondNumber}'
-                            : 'Qtà: ${_keypadFirstNumber.isEmpty ? '0' : _keypadFirstNumber}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF111827),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                SizedBox(
-                  width: 36,
-                  height: 36,
-                  child: IconButton(
-                    onPressed: _toggleCart,
-                    icon: const Icon(Icons.shopping_cart_outlined, size: 28),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    tooltip: 'Carrello',
-                  ),
-                ),
-              ],
-            ),
-          ),
+        children: [  
+          // Keypad
           Expanded(
-            child: Padding(
-              padding: EdgeInsets.zero,
-              child: NumericKeypad(
-                onNumberTap: _handleNumberInput,
-                onClear: _clearKeypad,
-                onBackspace: _handleBackspace,
-                onXTap: _handleXPress,
-              ),
+            child: NumericKeypad(
+              onNumberTap: _handleNumberInput,
+              onClear: _clearKeypad,
+              onBackspace: _handleBackspace,
+              onXTap: _handleXPress,
+              onPayment: _cartItems.isNotEmpty && _selectedPaymentMethod != null
+                  ? () => _processPayment(totalAmount)
+                  : null,
+              onPreAccount: () {},
+              totalAmount: totalAmount,
+              selectedPaymentMethod: _selectedPaymentMethod,
+              onShowPaymentModal: () => _showPaymentMethodModal(context),
             ),
           ),
         ],
@@ -1101,87 +1537,7 @@ class _PosScreenState extends State<PosScreen> {
     );
   }
 
-  Widget _buildDesktopKeypadPanel() {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(left: BorderSide(color: Colors.grey[300]!)),
-        color: Colors.white,
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border:
-                          Border.all(color: const Color(0xFFE5E7EB), width: 1),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    child: Center(
-                      child: Text(
-                        'Prezzo: ${_keypadFirstNumber.isEmpty ? '0' : _keypadFirstNumber}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF111827),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: 5,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border:
-                          Border.all(color: const Color(0xFFE5E7EB), width: 1),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    child: Center(
-                      child: Text(
-                        _keypadXPressed
-                            ? 'Prezzo: ${_keypadSecondNumber.isEmpty ? '0' : _keypadSecondNumber}'
-                            : 'Qtà: ${_keypadFirstNumber.isEmpty ? '0' : _keypadFirstNumber}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF111827),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.zero,
-              child: NumericKeypad(
-                onNumberTap: _handleNumberInput,
-                onClear: _clearKeypad,
-                onBackspace: _handleBackspace,
-                onXTap: _handleXPress,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildProductsPanel(List<Articolo> filteredList) {
     return Column(
@@ -1295,12 +1651,38 @@ class _PosScreenState extends State<PosScreen> {
                   padding: const EdgeInsets.all(8),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: _calculateGridColumns(),
-                    crossAxisSpacing: 4, 
+                    crossAxisSpacing: 4,
                     mainAxisSpacing: 4,
                     childAspectRatio: _isSmallScreen ? 1.25 : 1.35,
                   ),
-                  itemCount: filteredList.length,
+                  itemCount: filteredList.length + 1,
                   itemBuilder: (context, index) {
+                    if (index == filteredList.length) {
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const AnagraficaScreen(),
+                            ),
+                          );
+                        },
+                        child: CustomPaint(
+                          painter: DashedBorderPainter(
+                            color: Color.fromARGB(255, 106, 130, 238),
+                            strokeWidth: 2,
+                          ),
+                          child: Center(
+                            child: Icon(
+                              Icons.add_rounded,
+                              size: 38,
+                              color: Color.fromARGB(255, 106, 130, 238),
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+
                     final articolo = filteredList[index];
                     final productId = articolo.id.toString();
 
@@ -1322,18 +1704,19 @@ class _PosScreenState extends State<PosScreen> {
                       category: articolo.categoriaId.toString(),
                       price: articolo.prezzo,
                       description: articolo.descrizione,
+                      iva: articolo.iva,
                     );
 
                     String? selectedPrice;
-                    // if (_keypadFirstNumber.isNotEmpty) {
-                    //   if (_keypadXPressed && _keypadSecondNumber.isNotEmpty) {
-                    //     selectedPrice = '€$_keypadFirstNumber x$_keypadSecondNumber';
-                    //   } else if (_keypadXPressed) {
-                    //     selectedPrice = 'Qtà: $_keypadFirstNumber';
-                    //   } else {
-                    //     selectedPrice = '€$_keypadFirstNumber';
-                    //   }
-                    // }
+                    if (_keypadFirstNumber.isNotEmpty) {
+                      if (_keypadXPressed && _keypadSecondNumber.isNotEmpty) {
+                        selectedPrice = 'Qtà: $_keypadFirstNumber • €$_keypadSecondNumber';
+                      } else if (_keypadXPressed) {
+                        selectedPrice = 'Qtà: $_keypadFirstNumber';
+                      } else {
+                        selectedPrice = '€$_keypadFirstNumber';
+                      }
+                    }
 
                     return ProductCard(
                       product: displayProduct,
@@ -1390,5 +1773,56 @@ class _PosScreenState extends State<PosScreen> {
         ),
       ),
     );
+  }
+}
+
+class DashedBorderPainter extends CustomPainter {
+  final Color color;
+  final double strokeWidth;
+  final double dashWidth;
+  final double dashSpace;
+
+  DashedBorderPainter({
+    required this.color,
+    required this.strokeWidth,
+    this.dashWidth = 5,
+    this.dashSpace = 5,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke;
+
+    final path = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(0, 0, size.width, size.height),
+          const Radius.circular(12),
+        ),
+      );
+
+    ui.PathMetrics pathMetrics = path.computeMetrics();
+    for (ui.PathMetric pathMetric in pathMetrics) {
+      double distance = 0.0;
+      while (distance < pathMetric.length) {
+        double nextDist = distance + dashWidth;
+        canvas.drawPath(
+          pathMetric.extractPath(distance, nextDist),
+          paint,
+        );
+        distance = nextDist + dashSpace;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(DashedBorderPainter oldDelegate) {
+    return oldDelegate.color != color ||
+        oldDelegate.strokeWidth != strokeWidth ||
+        oldDelegate.dashWidth != dashWidth ||
+        oldDelegate.dashSpace != dashSpace;
   }
 }

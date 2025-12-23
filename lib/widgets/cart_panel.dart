@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:xml/xml.dart';
 import '../models.dart';
 import '../services/printing_service.dart';
 import '../services/database_service.dart';
-import '../util/printer_status_decoder.dart' as decoder;
+import '../services/payment_service.dart';
+import '../services/iva_handler.dart';
+import 'numeric_keyboard.dart';
 
 class CartPanel extends StatefulWidget {
   final List<CartItem> cartItems;
@@ -49,6 +50,7 @@ class CartPanel extends StatefulWidget {
 
 class _CartPanelState extends State<CartPanel> {
   String? _selectedPaymentMethod;
+  final PaymentService _paymentService = PaymentService();
 
   // Modern minimalist color palette
   static const Color primaryColor = Color(0xFF4361EE); // Primary blue
@@ -60,6 +62,8 @@ class _CartPanelState extends State<CartPanel> {
   static const Color textSecondary = Color(0xFF6C757D); // Secondary text
   static const Color borderColor = Color(0xFFE9ECEF); // Border color
   static const Color hoverColor = Color(0xFFE9F5FF); // Hover color
+
+  bool get _isWideScreen => MediaQuery.of(context).size.width >= 1024;
 
   String _getDisplayPaymentMethod(String method) {
     switch (method) {
@@ -78,94 +82,6 @@ class _CartPanelState extends State<CartPanel> {
       default:
         return method;
     }
-  }
-
-  void _validatePrinterStatus(
-      Map<String, String> statusSegments, List<String> errors) {
-    if (statusSegments['printer'] != 'OK') {
-      final printerStatus =
-          statusSegments['printer'] ?? 'Errore stampante sconosciuto';
-      if (printerStatus != 'Carta in esaurimento') {
-        errors.add(printerStatus);
-      }
-    }
-    if (statusSegments['ej'] != 'Giornale elettronico OK') {
-      errors.add(statusSegments['ej'] ?? 'Errore giornale elettronico');
-    }
-    if (statusSegments['cashDrawer'] != 'Cassetto chiuso') {
-      errors.add(statusSegments['cashDrawer'] ?? 'Errore cassetto');
-    }
-    if (statusSegments['receipt'] != 'Scontrino chiuso') {
-      errors.add(statusSegments['receipt'] ?? 'Errore scontrino');
-    }
-    if (statusSegments['mode'] != 'Stato: Registrazione') {
-      errors.add(statusSegments['mode'] ?? 'Errore modalità');
-    }
-  }
-
-  bool _checkPaperWarning(Map<String, String> statusSegments) {
-    final printerStatus = statusSegments['printer'] ?? '';
-    return printerStatus == 'Carta in esaurimento';
-  }
-
-  Map<String, dynamic> _parsePrinterResponse(String responseBody) {
-    final result = <String, dynamic>{
-      'fiscalReceiptNumber': null,
-      'receiptISODateTime': null,
-      'zRepNumber': null,
-      'serialNumber': null,
-      'statusSegments': <String, String>{},
-      'printerStatus': null,
-    };
-
-    try {
-      final document = XmlDocument.parse(responseBody);
-
-      final fiscalReceiptNumberElement =
-          document.findAllElements('fiscalReceiptNumber').firstOrNull;
-      if (fiscalReceiptNumberElement != null) {
-        result['fiscalReceiptNumber'] =
-            fiscalReceiptNumberElement.innerText.trim();
-      }
-
-      final receiptISODateTimeElement =
-          document.findAllElements('receiptISODateTime').firstOrNull;
-      if (receiptISODateTimeElement != null) {
-        result['receiptISODateTime'] =
-            receiptISODateTimeElement.innerText.trim();
-      }
-
-      final zRepNumberElement =
-          document.findAllElements('zRepNumber').firstOrNull;
-      if (zRepNumberElement != null) {
-        result['zRepNumber'] = zRepNumberElement.innerText.trim();
-      }
-
-      final serialNumberElement =
-          document.findAllElements('serialNumber').firstOrNull;
-      if (serialNumberElement != null) {
-        result['serialNumber'] = serialNumberElement.innerText.trim();
-      }
-
-      final printerStatusElement =
-          document.findAllElements('printerStatus').firstOrNull;
-      if (printerStatusElement != null) {
-        final printerStatus = printerStatusElement.innerText.trim();
-        if (printerStatus.isNotEmpty && printerStatus.length >= 5) {
-          result['printerStatus'] = printerStatus;
-          result['statusSegments'] =
-              decoder.FpStatusDecoder.decodeFpStatusSegments(printerStatus);
-          debugPrint('Decoded printer status: ${result["statusSegments"]}');
-        } else if (printerStatus.isNotEmpty) {
-          debugPrint(
-              'Printer status too short: "$printerStatus" (expected at least 5 characters)');
-        }
-      }
-    } catch (e) {
-      debugPrint('Error parsing printer response: $e');
-    }
-
-    return result;
   }
 
   @override
@@ -235,43 +151,21 @@ class _CartPanelState extends State<CartPanel> {
                     ),
                   ],
                 ),
-                Row(
-                  children: [
-                    // Keypad button
-                    if (widget.onOpenKeypad != null)
-                      Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        child: IconButton(
-                          onPressed: widget.onOpenKeypad,
-                          icon: const Icon(Icons.dialpad_rounded),
-                          style: IconButton.styleFrom(
-                            backgroundColor: hoverColor,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            padding: const EdgeInsets.all(8),
-                          ),
-                          tooltip: 'Apri tastiera',
-                          iconSize: 18,
-                        ),
+                // Clear cart button
+                if (widget.cartItems.isNotEmpty)
+                  IconButton(
+                    onPressed: () => _showClearCartDialog(),
+                    icon: const Icon(Icons.delete_outline_rounded),
+                    style: IconButton.styleFrom(
+                      backgroundColor: dangerColor.withOpacity(0.1),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    // Clear cart button
-                    if (widget.cartItems.isNotEmpty)
-                      IconButton(
-                        onPressed: () => _showClearCartDialog(),
-                        icon: const Icon(Icons.delete_outline_rounded),
-                        style: IconButton.styleFrom(
-                          backgroundColor: dangerColor.withOpacity(0.1),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          padding: const EdgeInsets.all(8),
-                          foregroundColor: dangerColor,
-                        ),
-                        iconSize: 18,
-                      ),
-                  ],
-                ),
+                      padding: const EdgeInsets.all(8),
+                      foregroundColor: dangerColor,
+                    ),
+                    iconSize: 18,
+                  ),
               ],
             ),
           ),
@@ -282,6 +176,27 @@ class _CartPanelState extends State<CartPanel> {
                 ? _buildEmptyState()
                 : _buildCartItems(),
           ),
+
+          // Keypad (Bottom - for wide screens)
+          if (_isWideScreen)
+            Container(
+              height: 360,
+              decoration: const BoxDecoration(
+                border: Border(top: BorderSide(color: borderColor, width: 1)),
+              ),
+              child: NumericKeypad(
+                onNumberTap: widget.onNumberTap,
+                onClear: widget.onClear,
+                onBackspace: widget.onBackspace,
+                onXTap: widget.onXTap,
+                onPayment: () => _processPayment(widget.totalAmount),
+                onPreAccount: widget.onPrint,
+                totalAmount: widget.totalAmount,
+                selectedPaymentMethod:
+                    (widget.cartItems.isEmpty) ? null : _selectedPaymentMethod,
+                onShowPaymentModal: () => _showPaymentMethodModal(context),
+              ),
+            ),
         ],
       ),
     );
@@ -332,28 +247,30 @@ class _CartPanelState extends State<CartPanel> {
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 20),
-            if (widget.onOpenKeypad != null)
-              ElevatedButton.icon(
-                onPressed: widget.onOpenKeypad,
-                icon: const Icon(Icons.dialpad_rounded, size: 16),
-                label: const Text(
-                  'Apri Tastiera',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+            if (!_isWideScreen) ...[
+              const SizedBox(height: 20),
+              if (widget.onOpenKeypad != null)
+                ElevatedButton.icon(
+                  onPressed: widget.onOpenKeypad,
+                  icon: const Icon(Icons.dialpad_rounded, size: 16),
+                  label: const Text(
+                    'Apri Tastiera',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
                   ),
-                  elevation: 0,
                 ),
-              ),
+            ]
           ],
         ),
       ),
@@ -366,21 +283,31 @@ class _CartPanelState extends State<CartPanel> {
         // Cart Items List
         Expanded(
           child: Container(
-            padding: const EdgeInsets.all(12),
-            child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: ListView.builder(
               padding: EdgeInsets.zero,
               itemCount: widget.cartItems.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final item = widget.cartItems[index];
-                return _buildCartItem(item);
+                return Column(
+                  children: [
+                    _buildCartItem(item),
+                    // Add bottom border separator for all items except the last one
+                    if (index < widget.cartItems.length - 1)
+                      Container(
+                        height: 1,
+                        margin: const EdgeInsets.only(left: 12),
+                        color: borderColor,
+                      ),
+                  ],
+                );
               },
             ),
           ),
         ),
 
-        // Order Summary
-        _buildOrderSummary(),
+        // Order Summary (only show if NOT wide screen, since keypad is shown on wide screens)
+        if (!_isWideScreen) _buildOrderSummary(),
       ],
     );
   }
@@ -390,10 +317,8 @@ class _CartPanelState extends State<CartPanel> {
       key: Key(item.product.id),
       direction: DismissDirection.startToEnd,
       background: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: dangerColor,
-          borderRadius: BorderRadius.circular(10),
         ),
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.only(left: 16),
@@ -493,10 +418,12 @@ class _CartPanelState extends State<CartPanel> {
       decoration: BoxDecoration(
         color: surfaceColor,
         border: const Border(top: BorderSide(color: borderColor, width: 1)),
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
+        borderRadius: _isWideScreen
+            ? BorderRadius.zero
+            : const BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -507,87 +434,84 @@ class _CartPanelState extends State<CartPanel> {
       ),
       child: Column(
         children: [
-          // Total Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'TOTALE',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: textPrimary,
-                ),
-              ),
-              Text(
-                '€${total.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: textPrimary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Payment Method Section
-          if (_selectedPaymentMethod != null) ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: successColor.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: successColor.withOpacity(0.2)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.payment_rounded,
-                    color: successColor,
-                    size: 20,
+          // Total Display
+           if (_selectedPaymentMethod != null)
+            Column(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: successColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: successColor.withOpacity(0.3)),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Pagamento',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: textSecondary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        Text(
-                          _getDisplayPaymentMethod(_selectedPaymentMethod!),
-                          style: const TextStyle(
-                            fontSize: 14,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.check_circle,
                             color: successColor,
-                            fontWeight: FontWeight.w700,
+                            size: 18,
                           ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Metodo: ${_getDisplayPaymentMethod(_selectedPaymentMethod!)}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: successColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                      GestureDetector(
+                        onTap: () => _showPaymentMethodModal(context),
+                        child: Icon(
+                          Icons.edit_rounded,
+                          size: 20,
+                          color: primaryColor,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  IconButton(
-                    onPressed: () => _showPaymentMethodModal(context),
-                    icon: const Icon(
-                      Icons.edit_rounded,
-                      color: textSecondary,
-                      size: 16,
-                    ),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 14),
+              ],
             ),
-            const SizedBox(height: 12),
-          ],
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: borderColor, width: 1),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'TOTALE',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: textSecondary,
+                  ),
+                ),
+                Text(
+                  '€${total.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    fontSize: 24, // slightly smaller
+                    fontWeight: FontWeight.w800,
+                    color: primaryColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+            const SizedBox(height: 14),
 
-          // Action Buttons
           Row(
             children: [
               // Print Button
@@ -603,14 +527,14 @@ class _CartPanelState extends State<CartPanel> {
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
-                        side: const BorderSide(color: borderColor, width: 1),
+                        side: const BorderSide(color: borderColor, width: 1.5),
                       ),
                       elevation: 0,
                     ),
                   ),
                 ),
               if (widget.onPrint != null) const SizedBox(width: 8),
-              // Payment/Process Button
+              // Pagare Button
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: _selectedPaymentMethod != null
@@ -618,13 +542,12 @@ class _CartPanelState extends State<CartPanel> {
                       : () => _showPaymentMethodModal(context),
                   icon: Icon(
                     _selectedPaymentMethod != null
-                        ? Icons.check_circle_rounded
+                        ? Icons.check_circle
                         : Icons.payment_rounded,
                     size: 18,
                   ),
                   label: Text(
                     _selectedPaymentMethod != null ? 'Pagare' : 'Pagamento',
-                    style: const TextStyle(fontSize: 14),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _selectedPaymentMethod != null
@@ -854,57 +777,6 @@ class _CartPanelState extends State<CartPanel> {
     );
   }
 
-// Updated helper method with minimalist design
-// Widget _buildMinimalPaymentOption({
-//   required IconData icon,
-//   required String title,
-//   required String value,
-//   required Color color,
-// }) {
-//   return GestureDetector(
-//     onTap: () {
-//       // Handle payment method selection
-//       print('Selected: $value');
-//     },
-//     child: Container(
-//       decoration: BoxDecoration(
-//         color: color.withOpacity(0.1),
-//         borderRadius: BorderRadius.circular(12),
-//         border: Border.all(color: color.withOpacity(0.2), width: 1),
-//       ),
-//       child: Column(
-//         mainAxisAlignment: MainAxisAlignment.center,
-//         children: [
-//           Container(
-//             width: 40,
-//             height: 40,
-//             decoration: BoxDecoration(
-//               color: color.withOpacity(0.15),
-//               shape: BoxShape.circle,
-//             ),
-//             child: Icon(
-//               icon,
-//               color: color,
-//               size: 22,
-//             ),
-//           ),
-//           const SizedBox(height: 8),
-//           Text(
-//             title,
-//             style: const TextStyle(
-//               fontSize: 13,
-//               fontWeight: FontWeight.w600,
-//               color: textPrimary,
-//             ),
-//             textAlign: TextAlign.center,
-//             maxLines: 2,
-//           ),
-//         ],
-//       ),
-//     ),
-//   );
-// }
-
   Widget _buildCompactPaymentOption({
     required IconData icon,
     required String title,
@@ -969,16 +841,22 @@ class _CartPanelState extends State<CartPanel> {
       await widget.onPaymentProcessed!(paymentMethod);
     }
 
-    final items = widget.cartItems
-        .map((cartItem) => {
-              'name': cartItem.product.name,
-              'price': cartItem.product.price,
-              'quantity': cartItem.quantity,
-            })
-        .toList();
+    final items = widget.cartItems.map((cartItem) {
+      final itemMap = {
+        'name': cartItem.product.name,
+        'price': cartItem.product.price,
+        'quantity': cartItem.quantity,
+      };
+      if (cartItem.product.iva != null) {
+        final ivaCode = SimpleIvaManager.getCodeByRate(cartItem.product.iva!);
+        if (ivaCode != null) {
+          itemMap['ivaCode'] = ivaCode;
+        }
+      }
+      return itemMap;
+    }).toList();
 
-    final printingService = PrintingService();
-    final responseBody = await printingService.printEpsonReceiptAutomatic(
+    final responseBody = await _paymentService.printReceiptAndGetResponse(
       items,
       total,
       paymentMethod,
@@ -991,13 +869,13 @@ class _CartPanelState extends State<CartPanel> {
     int transactionId = 0;
 
     if (responseBody != null) {
-      fiscalData = _parsePrinterResponse(responseBody);
+      fiscalData = _paymentService.parsePrinterResponse(responseBody);
       statusSegments =
           (fiscalData['statusSegments'] as Map<String, String>?) ?? {};
 
       if (statusSegments.isNotEmpty) {
-        _validatePrinterStatus(statusSegments, errors);
-        hasPaperWarning = _checkPaperWarning(statusSegments);
+        _paymentService.validatePrinterStatus(statusSegments, errors);
+        hasPaperWarning = _paymentService.checkPaperWarning(statusSegments);
       }
 
       if (hasPaperWarning && mounted) {
@@ -1026,49 +904,17 @@ class _CartPanelState extends State<CartPanel> {
       }
 
       if (errors.isEmpty) {
-        try {
-          final transaction = Transaction(
-            date: DateTime.now(),
-            total: total,
-            paymentMethod: paymentMethod,
-            isReturn: false,
-            items: widget.cartItems.map((cartItem) {
-              return TransactionItem(
-                transactionId: 0,
-                productName: cartItem.product.name,
-                price: cartItem.product.price,
-                quantity: cartItem.quantity,
-                total: cartItem.product.price * cartItem.quantity,
-              );
-            }).toList(),
+        transactionId = await _paymentService.saveTransaction(
+          total,
+          paymentMethod,
+          widget.cartItems,
+        );
+
+        if (transactionId > 0) {
+          await _paymentService.updateTransactionWithFiscalData(
+            transactionId,
+            fiscalData,
           );
-
-          final db = DatabaseService();
-          transactionId = await db.insertTransaction(transaction);
-
-          for (final item in transaction.items) {
-            await db.insertTransactionItem(
-              TransactionItem(
-                transactionId: transactionId,
-                productName: item.productName,
-                price: item.price,
-                quantity: item.quantity,
-                total: item.total,
-              ),
-            );
-          }
-
-          if (fiscalData.isNotEmpty) {
-            await db.updateTransactionWithFiscalData(
-              transactionId,
-              fiscalData['fiscalReceiptNumber']?.toString(),
-              fiscalData['receiptISODateTime']?.toString(),
-              fiscalData['zRepNumber']?.toString(),
-              fiscalData['serialNumber']?.toString(),
-            );
-          }
-        } catch (e) {
-          debugPrint('Error saving transaction: $e');
         }
       }
     }
@@ -1303,18 +1149,9 @@ class CartItemTile extends StatelessWidget {
     final isPhone = MediaQuery.of(context).size.width < 600;
 
     return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        border: Border.all(color: colors.border, width: 1),
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: const BoxDecoration(
+        color: Colors.transparent,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,

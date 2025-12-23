@@ -22,6 +22,8 @@ class _StampantiScreenState extends State<StampantiScreen> {
   final TextEditingController _portaController = TextEditingController();
   final TextEditingController _bluetoothAddressController =
       TextEditingController();
+  final TextEditingController _printerNumberController =
+      TextEditingController();
 
   // Bluetooth related variables
   final List<BluetoothDevice> _availableDevices = [];
@@ -34,9 +36,16 @@ class _StampantiScreenState extends State<StampantiScreen> {
   String? _selectedPrinterCategory;
   String? _selectedOrderPrinterType;
   String? _selectedPrinterModel;
+  String? _selectedReceiptPrinterType;
   bool _isDefaultPrinter = false;
-  final List<String?> _protocolli = ['standar', 'Epson', 'XON/XOFF', 'Custom'];
+  final List<String?> _protocolli = [
+    'standar',
+    'EpsonXml',
+    'XON/XOFF',
+    'Custom'
+  ];
   final List<String> _printerModels = ['Generic', 'Sunmi Pro'];
+  final List<String> _receiptPrinterTypes = ['Epson', 'RCH'];
 
   @override
   void initState() {
@@ -53,7 +62,7 @@ class _StampantiScreenState extends State<StampantiScreen> {
         setState(() {
           for (var device in connectedDevices) {
             final deviceName = device.platformName.toLowerCase();
-            
+
             final isPrinter = deviceName.contains('printer') ||
                 deviceName.contains('thermal') ||
                 deviceName.contains('receipt') ||
@@ -61,8 +70,9 @@ class _StampantiScreenState extends State<StampantiScreen> {
                 deviceName.contains('epson') ||
                 deviceName.contains('pos') ||
                 deviceName.contains('print');
-            
-            if (isPrinter && !_availableDevices.any((d) => d.remoteId == device.remoteId)) {
+
+            if (isPrinter &&
+                !_availableDevices.any((d) => d.remoteId == device.remoteId)) {
               _availableDevices.add(device);
             }
           }
@@ -81,13 +91,13 @@ class _StampantiScreenState extends State<StampantiScreen> {
     _ipController.dispose();
     _portaController.dispose();
     _bluetoothAddressController.dispose();
+    _printerNumberController.dispose();
     super.dispose();
   }
 
   Future<void> _checkBluetoothState() async {
     bool isSupported = await FlutterBluePlus.isSupported;
-    if (isSupported && mounted) {
-    }
+    if (isSupported && mounted) {}
   }
 
   Future<void> _startScan() async {
@@ -107,8 +117,6 @@ class _StampantiScreenState extends State<StampantiScreen> {
         return;
       }
 
-
-
       setState(() {
         _isScanning = true;
         _availableDevices.clear();
@@ -121,12 +129,12 @@ class _StampantiScreenState extends State<StampantiScreen> {
         if (!mounted) return;
 
         print('Scan results received: ${results.length} devices');
-        
+
         setState(() {
           for (var result in results) {
             final device = result.device;
             final deviceName = device.platformName.toLowerCase();
-            
+
             final isPrinter = deviceName.contains('printer') ||
                 deviceName.contains('thermal') ||
                 deviceName.contains('receipt') ||
@@ -134,9 +142,11 @@ class _StampantiScreenState extends State<StampantiScreen> {
                 deviceName.contains('epson') ||
                 deviceName.contains('pos') ||
                 deviceName.contains('print');
-            
-            if (isPrinter && !_availableDevices.any((d) => d.remoteId == device.remoteId)) {
-              print('Found printer device: ${device.platformName} (${device.remoteId})');
+
+            if (isPrinter &&
+                !_availableDevices.any((d) => d.remoteId == device.remoteId)) {
+              print(
+                  'Found printer device: ${device.platformName} (${device.remoteId})');
               _availableDevices.add(device);
             }
           }
@@ -163,7 +173,6 @@ class _StampantiScreenState extends State<StampantiScreen> {
 
       await Future.delayed(const Duration(seconds: 15));
       await _stopScan();
-
     } catch (e) {
       print('Error starting scan: $e');
       if (mounted) {
@@ -192,7 +201,7 @@ class _StampantiScreenState extends State<StampantiScreen> {
   Future<void> _connectToDevice(BluetoothDevice device) async {
     try {
       final deviceName = device.platformName;
-      
+
       setState(() {
         _selectedBluetoothDevice = device;
         _bluetoothAddressController.text = device.remoteId.toString();
@@ -224,10 +233,12 @@ class _StampantiScreenState extends State<StampantiScreen> {
     _ipController.clear();
     _portaController.clear();
     _bluetoothAddressController.clear();
+    _printerNumberController.clear();
     _selectedProtocollo = null;
     _selectedPrinterCategory = null;
     _selectedOrderPrinterType = null;
     _selectedPrinterModel = null;
+    _selectedReceiptPrinterType = null;
     _isDefaultPrinter = false;
     _editingStampante = null;
     _selectedBluetoothDevice = null;
@@ -241,7 +252,9 @@ class _StampantiScreenState extends State<StampantiScreen> {
       _selectedProtocollo = stampante.tipoProtocollo;
       _selectedPrinterCategory = stampante.printerCategory;
       _selectedPrinterModel = stampante.printerModel;
-      _selectedOrderPrinterType = stampante.printerModel == 'Sunmi Pro' 
+      _selectedReceiptPrinterType = stampante.receiptPrinterType;
+      _printerNumberController.text = stampante.printerNumber ?? '';
+      _selectedOrderPrinterType = stampante.printerModel == 'Sunmi Pro'
           ? 'Sunmi Pro'
           : stampante.orderPrinterType;
       _bluetoothAddressController.text = stampante.bluetoothAddress ?? '';
@@ -486,6 +499,16 @@ class _StampantiScreenState extends State<StampantiScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _buildReceiptPrinterTypeDropdown(setDialogState),
+        const SizedBox(height: 20),
+        _buildTextField(
+          controller: _printerNumberController,
+          label: 'Numero Stampante',
+          hintText: 'Es. 1, 2, 3...',
+          icon: Icons.numbers_rounded,
+          keyboardType: TextInputType.number,
+        ),
+        const SizedBox(height: 20),
         _buildTextField(
           controller: _ipController,
           label: 'Indirizzo IP',
@@ -547,7 +570,7 @@ class _StampantiScreenState extends State<StampantiScreen> {
                     _selectedBluetoothDevice = null;
                     _bluetoothAddressController.clear();
                   });
-                  
+
                   if (value == 'Bluetooth') {
                     await _startScan();
                     if (mounted) {
@@ -638,7 +661,9 @@ class _StampantiScreenState extends State<StampantiScreen> {
               TextButton.icon(
                 onPressed: _isScanning ? null : _startScan,
                 icon: Icon(
-                  _isScanning ? Icons.hourglass_empty_rounded : Icons.refresh_rounded,
+                  _isScanning
+                      ? Icons.hourglass_empty_rounded
+                      : Icons.refresh_rounded,
                   size: 18,
                 ),
                 label: Text(
@@ -666,11 +691,13 @@ class _StampantiScreenState extends State<StampantiScreen> {
               itemBuilder: (context, index) {
                 final device = _availableDevices[index];
                 final deviceName = device.platformName;
-                final isSelected = _bluetoothAddressController.text == device.remoteId.toString();
-                final isLikelyPrinter = deviceName.toLowerCase().contains('printer') ||
-                    deviceName.toLowerCase().contains('pos') ||
-                    deviceName.toLowerCase().contains('print') ||
-                    deviceName.toLowerCase().contains('sunmi');
+                final isSelected = _bluetoothAddressController.text ==
+                    device.remoteId.toString();
+                final isLikelyPrinter =
+                    deviceName.toLowerCase().contains('printer') ||
+                        deviceName.toLowerCase().contains('pos') ||
+                        deviceName.toLowerCase().contains('print') ||
+                        deviceName.toLowerCase().contains('sunmi');
 
                 return Material(
                   color: isSelected ? Colors.blue[50] : Colors.transparent,
@@ -678,7 +705,8 @@ class _StampantiScreenState extends State<StampantiScreen> {
                     onTap: () {
                       setDialogState(() {
                         _selectedBluetoothDevice = device;
-                        _bluetoothAddressController.text = device.remoteId.toString();
+                        _bluetoothAddressController.text =
+                            device.remoteId.toString();
                         _nomeController.text = deviceName;
                       });
                     },
@@ -899,7 +927,7 @@ class _StampantiScreenState extends State<StampantiScreen> {
     int selectedTabIndex = 0;
     final manualAddressController = TextEditingController();
     final manualNameController = TextEditingController();
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -962,9 +990,11 @@ class _StampantiScreenState extends State<StampantiScreen> {
                           children: [
                             Expanded(
                               child: GestureDetector(
-                                onTap: () => setState(() => selectedTabIndex = 0),
+                                onTap: () =>
+                                    setState(() => selectedTabIndex = 0),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
                                   decoration: BoxDecoration(
                                     border: Border(
                                       bottom: BorderSide(
@@ -1003,9 +1033,11 @@ class _StampantiScreenState extends State<StampantiScreen> {
                             ),
                             Expanded(
                               child: GestureDetector(
-                                onTap: () => setState(() => selectedTabIndex = 1),
+                                onTap: () =>
+                                    setState(() => selectedTabIndex = 1),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
                                   decoration: BoxDecoration(
                                     border: Border(
                                       bottom: BorderSide(
@@ -1077,7 +1109,9 @@ class _StampantiScreenState extends State<StampantiScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  _isScanning ? 'Ricerca in corso...' : 'Nessun dispositivo trovato',
+                  _isScanning
+                      ? 'Ricerca in corso...'
+                      : 'Nessun dispositivo trovato',
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.grey[600],
@@ -1102,10 +1136,11 @@ class _StampantiScreenState extends State<StampantiScreen> {
             itemBuilder: (context, index) {
               final device = _availableDevices[index];
               final deviceName = device.platformName;
-              final isLikelyPrinter = deviceName.toLowerCase().contains('printer') ||
-                  deviceName.toLowerCase().contains('pos') ||
-                  deviceName.toLowerCase().contains('print') ||
-                  deviceName.toLowerCase().contains('sunmi');
+              final isLikelyPrinter =
+                  deviceName.toLowerCase().contains('printer') ||
+                      deviceName.toLowerCase().contains('pos') ||
+                      deviceName.toLowerCase().contains('print') ||
+                      deviceName.toLowerCase().contains('sunmi');
 
               return Card(
                 margin: const EdgeInsets.symmetric(vertical: 6),
@@ -1119,9 +1154,8 @@ class _StampantiScreenState extends State<StampantiScreen> {
                   title: Text(
                     deviceName,
                     style: TextStyle(
-                      fontWeight: isLikelyPrinter
-                          ? FontWeight.w600
-                          : FontWeight.normal,
+                      fontWeight:
+                          isLikelyPrinter ? FontWeight.w600 : FontWeight.normal,
                     ),
                   ),
                   subtitle: Text(
@@ -1307,6 +1341,59 @@ class _StampantiScreenState extends State<StampantiScreen> {
     );
   }
 
+  Widget _buildReceiptPrinterTypeDropdown(StateSetter setDialogState) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Tipo di Stampante Ricevuta',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey[700],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[300]!),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String?>(
+              isExpanded: true,
+              value: _selectedReceiptPrinterType,
+              icon: const Icon(Icons.arrow_drop_down_rounded),
+              iconSize: 24,
+              elevation: 0,
+              style: const TextStyle(fontSize: 16, color: Colors.black),
+              borderRadius: BorderRadius.circular(12),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              hint: const Text(
+                'Seleziona il tipo',
+                style: TextStyle(color: Colors.grey),
+              ),
+              onChanged: (value) {
+                setDialogState(() {
+                  _selectedReceiptPrinterType = value;
+                });
+              },
+              items: _receiptPrinterTypes.map((type) {
+                return DropdownMenuItem<String?>(
+                  value: type,
+                  child: Text(
+                    type,
+                    style: const TextStyle(color: Colors.black),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildProtocolDropdown(StateSetter setDialogState) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1448,8 +1535,9 @@ class _StampantiScreenState extends State<StampantiScreen> {
   }
 
   Widget _buildActionButtons(BuildContext context, Stampante? stampante) {
-    final isSunmiPro = _selectedPrinterModel == 'Sunmi Pro' && _selectedPrinterCategory == 'Order';
-    
+    final isSunmiPro = _selectedPrinterModel == 'Sunmi Pro' &&
+        _selectedPrinterCategory == 'Order';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1457,14 +1545,18 @@ class _StampantiScreenState extends State<StampantiScreen> {
           ElevatedButton.icon(
             onPressed: () async {
               final success = await _printingService.testPrintSunmiPro(
-                businessName: _nomeController.text.isNotEmpty ? _nomeController.text : null,
+                businessName: _nomeController.text.isNotEmpty
+                    ? _nomeController.text
+                    : null,
               );
-              
+
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      success ? 'Stampa di prova inviata' : 'Errore nella stampa di prova',
+                      success
+                          ? 'Stampa di prova inviata'
+                          : 'Errore nella stampa di prova',
                     ),
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(
@@ -1524,7 +1616,8 @@ class _StampantiScreenState extends State<StampantiScreen> {
                       _selectedPrinterCategory == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: const Text('Compila tutti i campi obbligatori'),
+                        content:
+                            const Text('Compila tutti i campi obbligatori'),
                         behavior: SnackBarBehavior.floating,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -1535,12 +1628,14 @@ class _StampantiScreenState extends State<StampantiScreen> {
                   }
 
                   if (_selectedPrinterCategory == 'Receipt') {
-                    if (_ipController.text.isEmpty ||
+                    if (_selectedReceiptPrinterType == null ||
+                        _printerNumberController.text.isEmpty ||
+                        _ipController.text.isEmpty ||
                         _portaController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: const Text(
-                              'Inserisci IP e Porta per la stampante ricevuta'),
+                              'Compila tutti i campi per la stampante ricevuta'),
                           behavior: SnackBarBehavior.floating,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -1554,7 +1649,8 @@ class _StampantiScreenState extends State<StampantiScreen> {
                       if (_selectedOrderPrinterType == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: const Text('Seleziona il metodo di connessione'),
+                            content: const Text(
+                                'Seleziona il metodo di connessione'),
                             behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
@@ -1582,7 +1678,8 @@ class _StampantiScreenState extends State<StampantiScreen> {
                           _bluetoothAddressController.text.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: const Text('Seleziona una stampante Bluetooth'),
+                            content:
+                                const Text('Seleziona una stampante Bluetooth'),
                             behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
@@ -1601,12 +1698,15 @@ class _StampantiScreenState extends State<StampantiScreen> {
                     }
 
                     final isSunmiPro = _selectedPrinterModel == 'Sunmi Pro';
-                    
-                    final printerType = isSunmiPro 
+
+                    final printerType = isSunmiPro
                         ? 'Sunmi'
-                        : (_selectedOrderPrinterType == 'Bluetooth' ? 'Bluetooth' : 'Network');
-                    
-                    final orderPrinterType = isSunmiPro ? 'Sunmi Pro' : _selectedOrderPrinterType;
+                        : (_selectedOrderPrinterType == 'Bluetooth'
+                            ? 'Bluetooth'
+                            : 'Network');
+
+                    final orderPrinterType =
+                        isSunmiPro ? 'Sunmi Pro' : _selectedOrderPrinterType;
 
                     if (_editingStampante != null) {
                       final updated = Stampante(
@@ -1618,13 +1718,17 @@ class _StampantiScreenState extends State<StampantiScreen> {
                         printerType: printerType,
                         printerCategory: _selectedPrinterCategory,
                         orderPrinterType: orderPrinterType,
-                        bluetoothAddress: isSunmiPro 
-                            ? null 
+                        bluetoothAddress: isSunmiPro
+                            ? null
                             : (_bluetoothAddressController.text.isEmpty
                                 ? null
                                 : _bluetoothAddressController.text),
                         isDefault: _isDefaultPrinter,
                         printerModel: _selectedPrinterModel,
+                        receiptPrinterType: _selectedReceiptPrinterType,
+                        printerNumber: _printerNumberController.text.isEmpty
+                            ? null
+                            : _printerNumberController.text,
                       );
                       await _db.updateStampante(updated);
                     } else {
@@ -1636,13 +1740,17 @@ class _StampantiScreenState extends State<StampantiScreen> {
                         printerType: printerType,
                         printerCategory: _selectedPrinterCategory,
                         orderPrinterType: orderPrinterType,
-                        bluetoothAddress: isSunmiPro 
-                            ? null 
+                        bluetoothAddress: isSunmiPro
+                            ? null
                             : (_bluetoothAddressController.text.isEmpty
                                 ? null
                                 : _bluetoothAddressController.text),
                         isDefault: _isDefaultPrinter,
                         printerModel: _selectedPrinterModel,
+                        receiptPrinterType: _selectedReceiptPrinterType,
+                        printerNumber: _printerNumberController.text.isEmpty
+                            ? null
+                            : _printerNumberController.text,
                       );
                       await _db.insertStampante(newStampante);
                     }
@@ -1948,13 +2056,16 @@ class _StampantiScreenState extends State<StampantiScreen> {
                     ),
                     title: Row(
                       children: [
-                        Text(
+                         Expanded(
+                       child: Text(
                           stampante.nome,
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
-                        ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis, 
+                        ),),
                         if (stampante.isDefault == true) ...[
                           const SizedBox(width: 8),
                           Container(
@@ -2041,7 +2152,8 @@ class _StampantiScreenState extends State<StampantiScreen> {
                                 Icon(
                                   stampante.orderPrinterType == 'IP'
                                       ? Icons.wifi_rounded
-                                      : stampante.orderPrinterType == 'Bluetooth'
+                                      : stampante.orderPrinterType ==
+                                              'Bluetooth'
                                           ? Icons.bluetooth_rounded
                                           : Icons.smartphone_rounded,
                                   size: 14,
@@ -2085,30 +2197,30 @@ class _StampantiScreenState extends State<StampantiScreen> {
                               ],
                             ),
                           ],
-                          if (stampante.orderPrinterType == 'Bluetooth' &&
-                              stampante.bluetoothAddress != null) ...[
-                            const SizedBox(height: 2),
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.bluetooth_rounded,
-                                  size: 14,
-                                  color: Colors.grey[500],
-                                ),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    stampante.bluetoothAddress ?? '',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey[600],
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                          // if (stampante.orderPrinterType == 'Bluetooth' &&
+                          //     stampante.bluetoothAddress != null) ...[
+                          //   const SizedBox(height: 2),
+                          //   Row(
+                          //     children: [
+                          //       Icon(
+                          //         Icons.bluetooth_rounded,
+                          //         size: 14,
+                          //         color: Colors.grey[500],
+                          //       ),
+                          //       const SizedBox(width: 6),
+                          //       Expanded(
+                          //         child: Text(
+                          //           stampante.bluetoothAddress ?? '',
+                          //           style: TextStyle(
+                          //             fontSize: 13,
+                          //             color: Colors.grey[600],
+                          //           ),
+                          //           overflow: TextOverflow.ellipsis,
+                          //         ),
+                          //       ),
+                          //     ],
+                          //   ),
+                          // ],
                           if (stampante.tipoProtocollo.isNotEmpty &&
                               stampante.tipoProtocollo != 'standard') ...[
                             const SizedBox(height: 2),

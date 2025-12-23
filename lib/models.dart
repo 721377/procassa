@@ -5,6 +5,7 @@ class Product {
   final String category;
   double price;
   final String description;
+  final double? iva;
 
   Product({
     required this.id,
@@ -12,6 +13,7 @@ class Product {
     required this.category,
     required this.price,
     required this.description,
+    this.iva,
   });
 
   Product copyWith({
@@ -20,6 +22,7 @@ class Product {
     String? category,
     double? price,
     String? description,
+    double? iva,
   }) {
     return Product(
       id: id ?? this.id,
@@ -27,6 +30,7 @@ class Product {
       category: category ?? this.category,
       price: price ?? this.price,
       description: description ?? this.description,
+      iva: iva ?? this.iva,
     );
   }
 }
@@ -107,6 +111,8 @@ class Stampante {
   String? bluetoothAddress; // For Bluetooth printers
   bool? isDefault; // Is this the default printer for its category
   String? printerModel; // Printer model: 'Sunmi Pro', 'Generic', etc.
+  String? receiptPrinterType; // For receipt printers: 'Epson' or 'RCH'
+  String? printerNumber; // Printer number/identifier
 
   Stampante({
     this.id,
@@ -120,6 +126,8 @@ class Stampante {
     this.bluetoothAddress,
     this.isDefault = false,
     this.printerModel,
+    this.receiptPrinterType,
+    this.printerNumber,
   });
 
   Map<String, dynamic> toMap() {
@@ -135,6 +143,8 @@ class Stampante {
       'bluetoothAddress': bluetoothAddress,
       'isDefault': (isDefault ?? false) ? 1 : 0,
       'printerModel': printerModel,
+      'receiptPrinterType': receiptPrinterType,
+      'printerNumber': printerNumber,
     };
   }
 
@@ -151,6 +161,8 @@ class Stampante {
       bluetoothAddress: map['bluetoothAddress'],
       isDefault: (map['isDefault'] as int? ?? 0) == 1,
       printerModel: map['printerModel'],
+      receiptPrinterType: map['receiptPrinterType'],
+      printerNumber: map['printerNumber'],
     );
   }
 }
@@ -217,11 +229,15 @@ class IVA {
   final int? id;
   final String nome;
   final double valore;
+  final String? ivaCode;
+  final int? department;
 
   IVA({
     this.id,
     required this.nome,
     required this.valore,
+    this.ivaCode,
+    this.department,
   });
 
   Map<String, dynamic> toMap() {
@@ -229,6 +245,8 @@ class IVA {
       'id': id,
       'nome': nome,
       'valore': valore,
+      'ivaCode': ivaCode,
+      'department': department,
     };
   }
 
@@ -237,6 +255,8 @@ class IVA {
       id: map['id'],
       nome: map['nome'],
       valore: map['valore'],
+      ivaCode: map['ivaCode'],
+      department: map['department'],
     );
   }
 }
