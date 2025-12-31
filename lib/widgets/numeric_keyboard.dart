@@ -11,7 +11,7 @@ class NumericKeypad extends StatefulWidget {
   final double totalAmount;
   final String? selectedPaymentMethod;
   final VoidCallback? onShowPaymentModal;
-
+  final VoidCallback? onTotalLongPress;
 
   const NumericKeypad({
     super.key,
@@ -25,6 +25,7 @@ class NumericKeypad extends StatefulWidget {
     required this.totalAmount,
     this.selectedPaymentMethod,
     this.onShowPaymentModal,
+    this.onTotalLongPress,
   });
 
   @override
@@ -33,29 +34,27 @@ class NumericKeypad extends StatefulWidget {
 
 class _NumericKeypadState extends State<NumericKeypad> {
   String? _pressedKey;
-  bool _discountMode = false;
-
+  bool get _isWideScreen => MediaQuery.of(context).size.width >= 768;
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallScreen = screenWidth < 768;
-    final isLargeScreen = screenWidth >= 1024;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmallScreen = constraints.maxWidth < 450;
 
-    final buttonSpacing = isSmallScreen ? 1.0 : 3.0;
-    final buttonPadding = isSmallScreen ? 6.0 : 12.0;
-    final fontSize = isSmallScreen ? 20.0 : 20.0;
-    final cornerRadius = 10.0;
+        final buttonSpacing = isSmallScreen ? 2.5 : 4.0;
+        final fontSize = isSmallScreen ? 22.0 : 24.0;
+        final cornerRadius = 12.0;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(isSmallScreen ? 0 : 16),
-        ),
-      ),
+        return Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8F9FA),
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(isSmallScreen ? 0 : 16),
+            ),
+          ),
       child: Column(
         children: [
-          // Top Section: Discount Toggle and Total Display
+          // Top Section: Total Display
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
@@ -69,97 +68,44 @@ class _NumericKeypadState extends State<NumericKeypad> {
             ),
             child: Row(
               children: [
-                // Discount Toggle Button
-                Container(
-                  height: 35,
-                  decoration: BoxDecoration(
-                    color: _discountMode ? Colors.black : Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: _discountMode ? Colors.black : Colors.grey.shade300,
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 3,
-                        offset: const Offset(0, 1),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(8),
-                      onTap: () {
-                        setState(() {
-                          _discountMode = !_discountMode;
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.discount_outlined,
-                              size: 16,
-                              color: _discountMode ? Colors.white : Colors.grey.shade700,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'SCONTO',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: _discountMode ? Colors.white : Colors.grey.shade700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                
                 // Total Display
                 Expanded(
-                  child: Container(
-                    height: 35,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF4361EE).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: const Color(0xFF4361EE).withOpacity(0.2),
+                  child: GestureDetector(
+                    onLongPress: widget.onTotalLongPress,
+                    child: Container(
+                      height: 35,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
                       ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'TOTALE',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey.shade600,
-                            letterSpacing: 0.5,
-                          ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4361EE).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: const Color(0xFF4361EE).withOpacity(0.2),
                         ),
-                        Text(
-                          '€${widget.totalAmount.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF4361EE),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'TOTALE',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade600,
+                              letterSpacing: 0.5,
+                            ),
                           ),
-                        ),
-                      ],
+                          Text(
+                            '€${widget.totalAmount.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF4361EE),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -209,11 +155,12 @@ class _NumericKeypadState extends State<NumericKeypad> {
           // Main Keypad - Numeric Buttons
           Expanded(
             child: Container(
-              padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
+              padding: EdgeInsets.all(isSmallScreen ? 9 : 12),
               child: Column(
                 children: [
                   // Row 1: 7 8 9 C
                   Expanded(
+                    flex: 1,
                     child: Row(
                       children: [
                         _buildKey('7', buttonSpacing, fontSize, cornerRadius),
@@ -236,39 +183,41 @@ class _NumericKeypadState extends State<NumericKeypad> {
                   ),
                   SizedBox(height: buttonSpacing),
                   
-                  // Row 2: 4 5 6 ←
+                  // Row 2 & 3: 4-6 and 1-3 with X spanning both
                   Expanded(
+                    flex: 2,
                     child: Row(
                       children: [
-                        _buildKey('4', buttonSpacing, fontSize, cornerRadius),
-                        SizedBox(width: buttonSpacing),
-                        _buildKey('5', buttonSpacing, fontSize, cornerRadius),
-                        SizedBox(width: buttonSpacing),
-                        _buildKey('6', buttonSpacing, fontSize, cornerRadius),
-                        SizedBox(width: buttonSpacing),
-                        _buildSpecialKey(
-                          icon: Icons.backspace_outlined,
-                          backgroundColor: Colors.white,
-                          textColor: Colors.grey.shade700,
-                          onTap: widget.onBackspace,
-                          spacing: buttonSpacing,
-                          fontSize: fontSize - 2,
-                          cornerRadius: cornerRadius,
+                        Expanded(
+                          flex: 3,
+                          child: Column(
+                            children: [
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    _buildKey('4', buttonSpacing, fontSize, cornerRadius),
+                                    SizedBox(width: buttonSpacing),
+                                    _buildKey('5', buttonSpacing, fontSize, cornerRadius),
+                                    SizedBox(width: buttonSpacing),
+                                    _buildKey('6', buttonSpacing, fontSize, cornerRadius),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(height: buttonSpacing),
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    _buildKey('1', buttonSpacing, fontSize, cornerRadius),
+                                    SizedBox(width: buttonSpacing),
+                                    _buildKey('2', buttonSpacing, fontSize, cornerRadius),
+                                    SizedBox(width: buttonSpacing),
+                                    _buildKey('3', buttonSpacing, fontSize, cornerRadius),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: buttonSpacing),
-                  
-                  // Row 3: 1 2 3 X
-                  Expanded(
-                    child: Row(
-                      children: [
-                        _buildKey('1', buttonSpacing, fontSize, cornerRadius),
-                        SizedBox(width: buttonSpacing),
-                        _buildKey('2', buttonSpacing, fontSize, cornerRadius),
-                        SizedBox(width: buttonSpacing),
-                        _buildKey('3', buttonSpacing, fontSize, cornerRadius),
                         SizedBox(width: buttonSpacing),
                         _buildSpecialKey(
                           label: 'X',
@@ -286,6 +235,7 @@ class _NumericKeypadState extends State<NumericKeypad> {
                   
                   // Row 4: 0 . 00
                   Expanded(
+                    flex: 1,
                     child: Row(
                       children: [
                         Expanded(
@@ -405,9 +355,9 @@ class _NumericKeypadState extends State<NumericKeypad> {
                       borderRadius: BorderRadius.circular(10),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(10),
-                        onTap: widget.selectedPaymentMethod != null
+                        onTap: (_isWideScreen)?widget.selectedPaymentMethod != null
                             ? widget.onPayment
-                            : widget.onShowPaymentModal,
+                            : widget.onShowPaymentModal:widget.onPayment,
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                           child: Row(
@@ -443,6 +393,8 @@ class _NumericKeypadState extends State<NumericKeypad> {
           ),
         ],
       ),
+    );
+      },
     );
   }
 

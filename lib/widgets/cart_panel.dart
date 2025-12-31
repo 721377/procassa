@@ -23,6 +23,8 @@ class CartPanel extends StatefulWidget {
   final VoidCallback? onOpenKeypad;
   final Future<void> Function()? onPrint;
   final Future<void> Function(String)? onPaymentProcessed;
+  final Function(double, CartItem?)? onApplyDiscount;
+  final double totalDiscount;
 
   const CartPanel({
     super.key,
@@ -42,6 +44,8 @@ class CartPanel extends StatefulWidget {
     this.onOpenKeypad,
     this.onPrint,
     this.onPaymentProcessed,
+    this.onApplyDiscount,
+    this.totalDiscount = 0,
   });
 
   @override
@@ -51,6 +55,73 @@ class CartPanel extends StatefulWidget {
 class _CartPanelState extends State<CartPanel> {
   String? _selectedPaymentMethod;
   final PaymentService _paymentService = PaymentService();
+  bool _isProcessingPayment = false;
+  final ScrollController _scrollController = ScrollController();
+  bool _hasMoreBelow = false;
+  bool _hasMoreAbove = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_scrollListener);
+    // Initial check after build
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkScroll());
+  }
+
+  @override
+  void didUpdateWidget(CartPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Re-check scroll when items change
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // If an item was added or an item was updated (e.g. quantity changed)
+      // we scroll to the bottom to show the "active" part of the cart
+      _scrollToBottom();
+      _checkScroll();
+    });
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      // Delay slightly to ensure layout is complete
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_scrollListener);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollListener() {
+    _checkScroll();
+  }
+
+  void _checkScroll() {
+    if (!_scrollController.hasClients) return;
+    
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
+    
+    final hasMoreBelow = maxScroll > currentScroll + 10;
+    final hasMoreAbove = currentScroll > 10;
+
+    if (hasMoreBelow != _hasMoreBelow || hasMoreAbove != _hasMoreAbove) {
+      setState(() {
+        _hasMoreBelow = hasMoreBelow;
+        _hasMoreAbove = hasMoreAbove;
+      });
+    }
+  }
 
   // Modern minimalist color palette
   static const Color primaryColor = Color(0xFF4361EE); // Primary blue
@@ -63,7 +134,7 @@ class _CartPanelState extends State<CartPanel> {
   static const Color borderColor = Color(0xFFE9ECEF); // Border color
   static const Color hoverColor = Color(0xFFE9F5FF); // Hover color
 
-  bool get _isWideScreen => MediaQuery.of(context).size.width >= 1024;
+  bool get _isWideScreen => MediaQuery.of(context).size.width >= 768;
 
   String _getDisplayPaymentMethod(String method) {
     switch (method) {
@@ -83,6 +154,432 @@ class _CartPanelState extends State<CartPanel> {
         return method;
     }
   }
+
+void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
+  if (widget.onApplyDiscount == null || widget.cartItems.isEmpty) return;
+
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      CartItem? selectedItem = preselectedItem;
+      String discountValue = '';
+      bool isTotalDiscount = isTotal || preselectedItem == null;
+
+      if (isTotalDiscount && widget.totalDiscount > 0) {
+        discountValue = widget.totalDiscount.toStringAsFixed(0);
+      } else if (!isTotalDiscount &&
+          selectedItem != null &&
+          selectedItem.discount > 0) {
+        discountValue = selectedItem.discount.toStringAsFixed(0);
+      }
+
+      return StatefulBuilder(
+        builder: (context, setModalState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            insetPadding: const EdgeInsets.all(20),
+            child: Container(
+              width: 500, // Increased from 420
+              padding: const EdgeInsets.all(28),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Applica Sconto',
+                          style: TextStyle(
+                            fontSize: 22, // Increased
+                            fontWeight: FontWeight.w700,
+                            color: Colors.grey.shade900,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Icon(Icons.close, size: 20),
+                          ),
+                          style: IconButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Discount Type Selector
+                    Container(
+                      height: 48, // Increased
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: InkWell(
+                              onTap: () =>
+                                  setModalState(() => isTotalDiscount = true),
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(12),
+                                bottomLeft: Radius.circular(12),
+                              ),
+                              child: Container(
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: isTotalDiscount
+                                      ? const Color(0xFF4361EE)
+                                      : Colors.transparent,
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(12),
+                                    bottomLeft: Radius.circular(12),
+                                  ),
+                                  border: isTotalDiscount
+                                      ? null
+                                      : Border(
+                                          right: BorderSide(
+                                            color: Colors.grey.shade200,
+                                            width: 1,
+                                          ),
+                                        ),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                child: Text(
+                                  'Totale',
+                                  style: TextStyle(
+                                    fontSize: 15, // Increased
+                                    fontWeight: FontWeight.w600,
+                                    color: isTotalDiscount
+                                        ? Colors.white
+                                        : Colors.grey.shade700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: InkWell(
+                              onTap: () => setModalState(() {
+                                isTotalDiscount = false;
+                                selectedItem ??= widget.cartItems.isNotEmpty
+                                    ? widget.cartItems.first
+                                    : null;
+                              }),
+                              borderRadius: const BorderRadius.only(
+                                topRight: Radius.circular(12),
+                                bottomRight: Radius.circular(12),
+                              ),
+                              child: Container(
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: !isTotalDiscount
+                                      ? const Color(0xFF4361EE)
+                                      : Colors.transparent,
+                                  borderRadius: const BorderRadius.only(
+                                    topRight: Radius.circular(12),
+                                    bottomRight: Radius.circular(12),
+                                  ),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                child: Text(
+                                  'Articolo',
+                                  style: TextStyle(
+                                    fontSize: 15, // Increased
+                                    fontWeight: FontWeight.w600,
+                                    color: !isTotalDiscount
+                                        ? Colors.white
+                                        : Colors.grey.shade700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      height: !isTotalDiscount ? 60 : 0,
+                      margin:
+                          EdgeInsets.only(top: !isTotalDiscount ? 16 : 0),
+                      child: Visibility(
+                        visible: !isTotalDiscount,
+                        child: Container(
+                          height: 52,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade300),
+                            color: Colors.white,
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<CartItem>(
+                              value: selectedItem,
+                              items: widget.cartItems.map((item) {
+                                return DropdownMenuItem(
+                                  value: item,
+                                  child: Text(
+                                    item.product.name,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (val) =>
+                                  setModalState(() => selectedItem = val),
+                              isExpanded: true,
+                              hint: Text(
+                                'Seleziona articolo',
+                                style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              style: const TextStyle(color: Colors.black87),
+                              icon: Icon(Icons.arrow_drop_down,
+                                  size: 24, color: Colors.grey.shade600),
+                              iconSize: 28,
+                              dropdownColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Current Discount Display
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 14, horizontal: 18),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            'SCONTO APPLICATO',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            discountValue.isEmpty ? '0%' : '$discountValue%',
+                            style: const TextStyle(
+                              fontSize: 36, // Increased
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF4361EE),
+                              height: 1.2,
+                            ),
+                          ),
+                          if (discountValue.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                isTotalDiscount
+                                    ? 'Sconto totale'
+                                    : 'Sconto articolo',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 15),
+
+                    // Keypad Grid
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        childAspectRatio: 1.8, // Changed from 1.8
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                      ),
+                      itemCount: 12,
+                      itemBuilder: (context, index) {
+                        String label = '';
+                        IconData? icon;
+                        Color bgColor = Colors.white;
+                        Color textColor = Colors.grey.shade900;
+                        double fontSize = 20;
+
+                        if (index < 9) {
+                          label = '${index + 1}';
+                        } else if (index == 9) {
+                          label = 'C';
+                          bgColor = Colors.red.shade50;
+                          textColor = Colors.red;
+                          fontSize = 18;
+                        } else if (index == 10) {
+                          label = '0';
+                        } else if (index == 11) {
+                          icon = Icons.backspace_outlined;
+                          bgColor = Colors.grey.shade100;
+                          textColor = Colors.grey.shade700;
+                        }
+
+                        return Material(
+                          color: bgColor,
+                          borderRadius: BorderRadius.circular(12),
+                          elevation: 1,
+                          shadowColor: Colors.black.withOpacity(0.05),
+                          child: InkWell(
+                            onTap: () {
+                              setModalState(() {
+                                if (label == 'C') {
+                                  discountValue = '';
+                                } else if (icon != null) {
+                                  if (discountValue.isNotEmpty) {
+                                    discountValue = discountValue.substring(
+                                        0, discountValue.length - 1);
+                                  }
+                                } else if (label.isNotEmpty &&
+                                    discountValue.length < 3) {
+                                  discountValue += label;
+                                  if (double.parse(discountValue) > 100) {
+                                    discountValue = '100';
+                                  }
+                                }
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.grey.shade200,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Center(
+                                child: icon != null
+                                    ? Icon(icon,
+                                        size: 24,
+                                        color: textColor) // Increased size
+                                    : Text(
+                                        label,
+                                        style: TextStyle(
+                                          fontSize: fontSize,
+                                          fontWeight: FontWeight.w600,
+                                          color: textColor,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 25),
+
+                    // Buttons Section
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: 52, // Increased
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(context),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.grey.shade700,
+                                backgroundColor: Colors.white,
+                                side: BorderSide(
+                                    color: Colors.grey.shade300, width: 1.5),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                              ),
+                              child: const Text(
+                                'Annulla',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: SizedBox(
+                            height: 52, // Increased
+                            child: ElevatedButton(
+                              onPressed: () {
+                                double d = double.tryParse(discountValue) ?? 0;
+                                if (isTotalDiscount) {
+                                  widget.onApplyDiscount?.call(d, null);
+                                  Navigator.pop(context);
+                                } else if (selectedItem != null) {
+                                  widget.onApplyDiscount
+                                      ?.call(d, selectedItem);
+                                  Navigator.pop(context);
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF4361EE),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 0,
+                                shadowColor: Colors.transparent,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                              ),
+                              child: const Text(
+                                'Applica Sconto',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -180,7 +677,7 @@ class _CartPanelState extends State<CartPanel> {
           // Keypad (Bottom - for wide screens)
           if (_isWideScreen)
             Container(
-              height: 360,
+              height: 420, // Increased from 360
               decoration: const BoxDecoration(
                 border: Border(top: BorderSide(color: borderColor, width: 1)),
               ),
@@ -195,6 +692,7 @@ class _CartPanelState extends State<CartPanel> {
                 selectedPaymentMethod:
                     (widget.cartItems.isEmpty) ? null : _selectedPaymentMethod,
                 onShowPaymentModal: () => _showPaymentMethodModal(context),
+                onTotalLongPress: () => _showDiscountModal(isTotal: true),
               ),
             ),
         ],
@@ -282,27 +780,110 @@ class _CartPanelState extends State<CartPanel> {
       children: [
         // Cart Items List
         Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: ListView.builder(
-              padding: EdgeInsets.zero,
-              itemCount: widget.cartItems.length,
-              itemBuilder: (context, index) {
-                final item = widget.cartItems[index];
-                return Column(
-                  children: [
-                    _buildCartItem(item),
-                    // Add bottom border separator for all items except the last one
-                    if (index < widget.cartItems.length - 1)
-                      Container(
-                        height: 1,
-                        margin: const EdgeInsets.only(left: 12),
-                        color: borderColor,
+          child: Stack(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.only(top: 8, bottom: 20),
+                  itemCount: widget.cartItems.length,
+                  itemBuilder: (context, index) {
+                    final item = widget.cartItems[index];
+                    return Column(
+                      children: [
+                        _buildCartItem(item),
+                        // Add bottom border separator for all items except the last one
+                        if (index < widget.cartItems.length - 1)
+                          Container(
+                            height: 1,
+                            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            color: borderColor.withOpacity(0.5),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              
+              // Scroll Up Indicator Tag
+              if (_hasMoreAbove && _isWideScreen)
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: GestureDetector(
+                    onTap: () {
+                      _scrollController.animateTo(
+                        _scrollController.offset - 100,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOut,
+                      );
+                    },
+                    child: AnimatedOpacity(
+                      opacity: _hasMoreAbove ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color.fromARGB(139, 67, 98, 238),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 5,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.keyboard_arrow_up_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        ),
                       ),
-                  ],
-                );
-              },
-            ),
+                    ),
+                  ),
+                ),
+
+              // Scroll Down Indicator Tag
+              if (_hasMoreBelow && _isWideScreen)
+                Positioned(
+                  bottom: 8,
+                  left: 8,
+                  child: GestureDetector(
+                    onTap: () {
+                      _scrollController.animateTo(
+                        _scrollController.offset + 100,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOut,
+                      );
+                    },
+                    child: AnimatedOpacity(
+                      opacity: _hasMoreBelow ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color.fromARGB(139, 67, 98, 238),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 5,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
 
@@ -312,87 +893,132 @@ class _CartPanelState extends State<CartPanel> {
     );
   }
 
+  void _showItemActionsModal(CartItem item) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: surfaceColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                item.product.name,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: textPrimary,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildActionButton(
+                      icon: Icons.percent_rounded,
+                      label: 'Sconto',
+                      color: primaryColor,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showDiscountModal(preselectedItem: item, isTotal: false);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildActionButton(
+                      icon: Icons.delete_outline_rounded,
+                      label: 'Rimuovi',
+                      color: dangerColor,
+                      onTap: () {
+                        Navigator.pop(context);
+                        widget.onRemoveItem(item.product.id);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildCartItem(CartItem item) {
     return Dismissible(
       key: Key(item.product.id),
       direction: DismissDirection.startToEnd,
       background: Container(
-        decoration: const BoxDecoration(
-          color: dangerColor,
+        decoration: BoxDecoration(
+          color: primaryColor.withOpacity(0.8),
         ),
         alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.only(left: 16),
-        child: const Icon(
-          Icons.delete_forever_rounded,
-          color: Colors.white,
-          size: 24,
+        padding: const EdgeInsets.only(left: 24),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.more_horiz_rounded,
+              color: Colors.white,
+              size: 28,
+            ),
+            Text(
+              'Azioni',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ),
       confirmDismiss: (direction) async {
-        return await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            backgroundColor: surfaceColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            title: const Row(
-              children: [
-                Icon(
-                  Icons.warning_amber_rounded,
-                  color: dangerColor,
-                  size: 22,
-                ),
-                SizedBox(width: 8),
-                Text(
-                  'Rimuovi Articolo',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: textPrimary,
-                  ),
-                ),
-              ],
-            ),
-            content: Text(
-              'Rimuovere "${item.product.name}" dall\'ordine?',
-              style: const TextStyle(
-                fontSize: 14,
-                color: textSecondary,
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                style: TextButton.styleFrom(
-                  foregroundColor: textSecondary,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                ),
-                child: const Text('Annulla'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: dangerColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Text('Rimuovi'),
-              ),
-            ],
-          ),
-        );
+        _showItemActionsModal(item);
+        return false;
       },
-      onDismissed: (direction) => widget.onRemoveItem(item.product.id),
       child: CartItemTile(
         item: item,
         onUpdateQuantity: widget.onUpdateQuantity,
@@ -481,33 +1107,86 @@ class _CartPanelState extends State<CartPanel> {
                 const SizedBox(height: 14),
               ],
             ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: backgroundColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: borderColor, width: 1),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'TOTALE',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: textSecondary,
+          GestureDetector(
+            onLongPress: () => _showDiscountModal(isTotal: true),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: borderColor, width: 1),
+              ),
+              child: Column(
+                children: [
+                  if (widget.totalDiscount > 0) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Subtotale',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: textSecondary,
+                          ),
+                        ),
+                        Text(
+                          '€${(total / (1 - (widget.totalDiscount / 100))).toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Sconto (${widget.totalDiscount.toStringAsFixed(0)}%)',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: successColor,
+                          ),
+                        ),
+                        Text(
+                          '- €${((total / (1 - (widget.totalDiscount / 100))) - total).toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: successColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'TOTALE',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: textSecondary,
+                        ),
+                      ),
+                      Text(
+                        '€${total.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: primaryColor,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                Text(
-                  '€${total.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontSize: 24, // slightly smaller
-                    fontWeight: FontWeight.w800,
-                    color: primaryColor,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
             const SizedBox(height: 14),
@@ -835,280 +1514,343 @@ class _CartPanelState extends State<CartPanel> {
   }
 
   Future<void> _processPayment(double total) async {
+    if (_isProcessingPayment) return;
+
     final paymentMethod = _selectedPaymentMethod ?? 'CONTANTE';
+    setState(() => _isProcessingPayment = true);
 
-    if (widget.onPaymentProcessed != null) {
-      await widget.onPaymentProcessed!(paymentMethod);
+    BuildContext? loaderContext;
+
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) {
+          loaderContext = dialogContext;
+          return Dialog(
+            backgroundColor: surfaceColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: CircularProgressIndicator(),
+                  ),
+                  SizedBox(height: 14),
+                  Text(
+                    'Stampa in corso...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: textPrimary,
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    'Attendere il completamento',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
     }
-
-    final items = widget.cartItems.map((cartItem) {
-      final itemMap = {
-        'name': cartItem.product.name,
-        'price': cartItem.product.price,
-        'quantity': cartItem.quantity,
-      };
-      if (cartItem.product.iva != null) {
-        final ivaCode = SimpleIvaManager.getCodeByRate(cartItem.product.iva!);
-        if (ivaCode != null) {
-          itemMap['ivaCode'] = ivaCode;
-        }
-      }
-      return itemMap;
-    }).toList();
-
-    final responseBody = await _paymentService.printReceiptAndGetResponse(
-      items,
-      total,
-      paymentMethod,
-    );
 
     final errors = <String>[];
     bool hasPaperWarning = false;
     Map<String, String> statusSegments = {};
     Map<String, dynamic> fiscalData = {};
     int transactionId = 0;
+    String? responseBody;
 
-    if (responseBody != null) {
-      fiscalData = _paymentService.parsePrinterResponse(responseBody);
-      statusSegments =
-          (fiscalData['statusSegments'] as Map<String, String>?) ?? {};
-
-      if (statusSegments.isNotEmpty) {
-        _paymentService.validatePrinterStatus(statusSegments, errors);
-        hasPaperWarning = _paymentService.checkPaperWarning(statusSegments);
+    try {
+      if (widget.onPaymentProcessed != null) {
+        await widget.onPaymentProcessed!(paymentMethod);
       }
 
-      if (hasPaperWarning && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.warning_amber_rounded, color: Colors.white),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Attenzione: Carta in esaurimento. Sostituire il rotolo al più presto.',
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 5),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
-      }
-
-      if (errors.isEmpty) {
-        transactionId = await _paymentService.saveTransaction(
-          total,
-          paymentMethod,
-          widget.cartItems,
-        );
-
-        if (transactionId > 0) {
-          await _paymentService.updateTransactionWithFiscalData(
-            transactionId,
-            fiscalData,
-          );
+      final items = widget.cartItems.map((cartItem) {
+        final itemMap = {
+          'name': cartItem.product.name,
+          'price': cartItem.product.price,
+          'quantity': cartItem.quantity,
+          'discount': cartItem.discount,
+        };
+        if (cartItem.product.iva != null) {
+          final ivaCode = SimpleIvaManager.getCodeByRate(cartItem.product.iva!);
+          if (ivaCode != null) {
+            itemMap['ivaCode'] = ivaCode;
+          }
         }
-      }
-    }
+        return itemMap;
+      }).toList();
 
-    if (mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => Dialog(
-          backgroundColor: surfaceColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: 420, // 👈 keeps dialog compact on large screens
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+      responseBody = await _paymentService.printReceiptAndGetResponse(
+        items,
+        total,
+        paymentMethod,
+        totalDiscount: widget.totalDiscount,
+      );
+
+      if (responseBody != null) {
+        fiscalData = _paymentService.parsePrinterResponse(responseBody);
+        statusSegments =
+            (fiscalData['statusSegments'] as Map<String, String>?) ?? {};
+
+        if (statusSegments.isNotEmpty) {
+          _paymentService.validatePrinterStatus(statusSegments, errors);
+          hasPaperWarning = _paymentService.checkPaperWarning(statusSegments);
+        }
+
+        if (hasPaperWarning && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
                 children: [
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: (responseBody != null && errors.isEmpty)
-                          ? successColor.withOpacity(0.1)
-                          : const Color(0xFFFCA5A5).withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      (responseBody != null && errors.isEmpty)
-                          ? Icons.check_circle_rounded
-                          : Icons.warning_rounded,
-                      color: (responseBody != null && errors.isEmpty)
-                          ? successColor
-                          : const Color(0xFFDC2626),
-                      size: 36,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    (responseBody != null && errors.isEmpty)
-                        ? 'Ordine Completato!'
-                        : 'Avvertenza Stampante',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  if (responseBody != null && errors.isEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: hoverColor,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            '€${total.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: successColor,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _getDisplayPaymentMethod(paymentMethod),
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: textSecondary,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFDC2626).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: const Color(0xFFDC2626),
-                          width: 1,
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (responseBody == null)
-                            const Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Errore Stampa:',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFFDC2626),
-                                  ),
-                                ),
-                                SizedBox(height: 8),
-                                Text(
-                                  'La ricevuta non è stata stampata. La stampante non risponde.',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: textSecondary,
-                                  ),
-                                ),
-                                SizedBox(height: 12),
-                              ],
-                            ),
-                          if (errors.isNotEmpty)
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Errori Stampante:',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFFDC2626),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    errors.join('\n'),
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: textSecondary,
-                                      fontFamily: 'monospace',
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                        ],
-                      ),
-                    ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        if (responseBody != null && errors.isEmpty) {
-                          widget.onClearCart();
-                          setState(() => _selectedPaymentMethod = null);
-                        }
-                        Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            (responseBody != null && errors.isEmpty)
-                                ? primaryColor
-                                : const Color(0xFFDC2626),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: Text(
-                        (responseBody != null && errors.isEmpty)
-                            ? 'Nuovo Ordine'
-                            : 'Annulla',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                  Icon(Icons.warning_amber_rounded, color: Colors.white),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Attenzione: Carta in esaurimento. Sostituire il rotolo al più presto.',
+                      style: TextStyle(fontWeight: FontWeight.w500),
                     ),
                   ),
                 ],
               ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 5),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+        }
+
+        if (errors.isEmpty) {
+          transactionId = await _paymentService.saveTransaction(
+            total,
+            paymentMethod,
+            widget.cartItems,
+            discount: widget.totalDiscount,
+          );
+
+          if (transactionId > 0) {
+            await _paymentService.updateTransactionWithFiscalData(
+              transactionId,
+              fiscalData,
+            );
+          }
+
+          widget.onClearCart();
+          setState(() => _selectedPaymentMethod = null);
+        }
+      }
+    } finally {
+      if (loaderContext != null) {
+        Navigator.of(loaderContext!).pop();
+      }
+      if (mounted) {
+        setState(() => _isProcessingPayment = false);
+      }
+    }
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: surfaceColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: 420, // 👈 keeps dialog compact on large screens
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: (responseBody != null && errors.isEmpty)
+                        ? successColor.withOpacity(0.1)
+                        : const Color(0xFFFCA5A5).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    (responseBody != null && errors.isEmpty)
+                        ? Icons.check_circle_rounded
+                        : Icons.warning_rounded,
+                    color: (responseBody != null && errors.isEmpty)
+                        ? successColor
+                        : const Color(0xFFDC2626),
+                    size: 36,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  (responseBody != null && errors.isEmpty)
+                      ? 'Ordine Completato!'
+                      : 'Avvertenza Stampante',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (responseBody != null && errors.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: hoverColor,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          '€${total.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: successColor,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _getDisplayPaymentMethod(paymentMethod),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDC2626).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: const Color(0xFFDC2626),
+                        width: 1,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (responseBody == null)
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Errore Stampa:',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFFDC2626),
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Lo scontrino non è stato stampato. La stampante non risponde.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: textSecondary,
+                                ),
+                              ),
+                              SizedBox(height: 12),
+                            ],
+                          ),
+                        if (errors.isNotEmpty)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Errori Stampante:',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFFDC2626),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  errors.join('\n'),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: textSecondary,
+                                    fontFamily: 'monospace',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          (responseBody != null && errors.isEmpty)
+                              ? primaryColor
+                              : const Color(0xFFDC2626),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Text(
+                      (responseBody != null && errors.isEmpty)
+                          ? 'Nuovo Ordine'
+                          : 'Annulla',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
-      );
+      ),
+    );
     }
   }
-}
 
 class _CartColors {
   final Color primary;
@@ -1171,6 +1913,39 @@ class CartItemTile extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
+                if (item.discount > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: colors.success.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '-${item.discount.toStringAsFixed(0)}%',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: colors.success,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '€${(item.product.price * item.quantity).toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            decoration: TextDecoration.lineThrough,
+                            color: colors.textSecondary.withOpacity(0.7),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),

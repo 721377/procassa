@@ -80,44 +80,59 @@ class PrintingService {
   // BLUETOOTH PRINTER - HELPER METHODS
   // ============================================================================
 
-  String _buildPrintContent(
-    List<Map<String, dynamic>> items,
-    double subtotal,
-    double taxPercentage, {
-    String? businessName,
-  }) {
-    StringBuffer buffer = StringBuffer();
+String _buildPrintContent(
+  List<Map<String, dynamic>> items,
+  double subtotal,
+  double taxPercentage, {
+  String? businessName,
+}) {
+  StringBuffer buffer = StringBuffer();
 
-    buffer.writeln('\x1B\x21\x30         ORDINE             \x1B\x21\x00');
-    buffer.writeln('-----------------------------------------------\n');
+  // Header
+  buffer.writeln('\x1B\x21\x30         ORDINE             \x1B\x21\x00');
+  // buffer.writeln('-----------------------------------------------\n');
 
-    for (final item in items) {
-      final name = item['name'] as String? ?? 'Item';
-      final quantity = item['quantity'] as int? ?? 1;
-      final price = item['price'] as double? ?? 0.0;
-      final total = quantity * price;
+  // Items
+  for (final item in items) {
+    final name = item['name'] as String? ?? 'Item';
+    final quantity = item['quantity'] as int? ?? 1;
+    final price = item['price'] as double? ?? 0.0;
+    final total = quantity * price;
 
-      final displayName = name.length > 18 ? name.substring(0, 18) : name;
-      final padding = ' ' * (18 - displayName.length);
-      buffer.writeln(
-        '\x1B\x21\x11 ${quantity.toString().padLeft(3)}     X${total.toStringAsFixed(2).padLeft(8)}  $displayName  \x1B\x21\x00'
-      );
-      buffer.writeln('\n');
-    }
+    // Limit name length and align
+    final displayName = name.length > 18 ? name.substring(0, 18) : name;
+    final namePadding = ' ' * (18 - displayName.length);
+    final quantityStr = quantity.toString().padLeft(3);
+    final totalStr = total.toStringAsFixed(2).padLeft(8);
 
-    buffer.writeln('-----------------------------------------------');
-
-    buffer.writeln('\x1B\x21\x13 TOTALE:                   \x80${subtotal.toStringAsFixed(2)} \x1B\x21\x00');
-
-    buffer.writeln('-----------------------------------------------\n');
-
-    final now = DateTime.now();
-    final dateFormatter = DateFormat('dd/MM/yyyy HH:mm');
-    buffer.writeln(dateFormatter.format(now));
-    buffer.writeln('\n\n\n');
-
-    return buffer.toString();
+    // Bigger text for items
+    buffer.writeln(
+      '\x1B\x61\x00'
+    );
+    buffer.writeln(
+      '\x1B\x61\x00\x1B\x21\x10$quantityStr X $totalStr  $displayName$namePadding\x1B\x21\x00\n'
+    );
   }
+
+  buffer.writeln('\n-----------------------------------------------\n');
+
+  // Subtotal / total
+  buffer.writeln(
+    '\x1B\x21\x10 TOTALE:                   \x80${subtotal.toStringAsFixed(2)} \x1B\x21\x00'
+  );
+
+  buffer.writeln('-----------------------------------------------');
+
+  // Date and time  
+  buffer.writeln('\n\n');
+  final now = DateTime.now();
+  final dateFormatter = DateFormat('dd/MM/yyyy HH:mm');
+  buffer.writeln(dateFormatter.format(now));
+  buffer.writeln('\n\n\n');
+
+  return buffer.toString();
+}
+
 
   // ============================================================================
   // NETWORK/IP PRINTER - ORDER PRINTING
@@ -168,146 +183,84 @@ class PrintingService {
   // NETWORK/IP PRINTER - HELPER METHODS
   // ============================================================================
 
-  Future<void> _printCommandContent(
-    NetworkPrinter printer,
-    List<Map<String, dynamic>> items,
-    double subtotal,
-    double taxPercentage, {
-    String? businessName,
-  }) async {
-    if (businessName != null && businessName.isNotEmpty) {
-      printer.text(
-        businessName,
-        styles: const esc_pos_utils.PosStyles(
-          align: esc_pos_utils.PosAlign.center,
-          bold: true,
-          height: esc_pos_utils.PosTextSize.size2,
-          width: esc_pos_utils.PosTextSize.size2,
-        ),
-        linesAfter: 1,
-      );
-    }
-
-    printer.hr();
-
+Future<void> _printCommandContent(
+  NetworkPrinter printer,
+  List<Map<String, dynamic>> items,
+  double subtotal,
+  double taxPercentage, {
+  String? businessName,
+}) async {
+  // Business name
+  if (businessName != null && businessName.isNotEmpty) {
     printer.text(
-      'ORDINE',
+      businessName,
       styles: const esc_pos_utils.PosStyles(
         align: esc_pos_utils.PosAlign.center,
         bold: true,
         height: esc_pos_utils.PosTextSize.size2,
+        width: esc_pos_utils.PosTextSize.size2,
       ),
       linesAfter: 1,
     );
+  }
 
-    printer.hr();
+  printer.text(
+    '\x1B\x21\x30         ORDINE             \x1B\x21\x00',
+    styles: const esc_pos_utils.PosStyles(align: esc_pos_utils.PosAlign.center),
+    linesAfter: 1,
+  );
 
-    printer.row([
-      esc_pos_utils.PosColumn(
-        text: 'Articolo',
-        width: 8,
-        styles: const esc_pos_utils.PosStyles(bold: true, width: esc_pos_utils.PosTextSize.size1),
-      ),
-      esc_pos_utils.PosColumn(
-        text: 'Qty',
-        width: 2,
-        styles: const esc_pos_utils.PosStyles(bold: true, align: esc_pos_utils.PosAlign.center),
-      ),
-      esc_pos_utils.PosColumn(
-        text: 'Prezzo',
-        width: 2,
-        styles: const esc_pos_utils.PosStyles(bold: true, align: esc_pos_utils.PosAlign.right),
-      ),
-    ]);
+  printer.hr();
 
-    printer.hr();
+  // Items
+  for (final item in items) {
+    final name = item['name'] as String? ?? 'Item';
+    final quantity = item['quantity'] as int? ?? 1;
+    final price = item['price'] as double? ?? 0.0;
+    final total = quantity * price;
 
-    for (final item in items) {
-      final name = item['name'] as String? ?? 'Item';
-      final quantity = item['quantity'] as int? ?? 1;
-      final price = item['price'] as double? ?? 0.0;
-      final total = quantity * price;
-
-      printer.row([
-        esc_pos_utils.PosColumn(
-          text: name.length > 15 ? name.substring(0, 15) : name,
-          width: 8,
-        ),
-        esc_pos_utils.PosColumn(
-          text: quantity.toString(),
-          width: 2,
-          styles: const esc_pos_utils.PosStyles(align: esc_pos_utils.PosAlign.center),
-        ),
-        esc_pos_utils.PosColumn(
-          text: '\$${total.toStringAsFixed(2)}',
-          width: 2,
-          styles: const esc_pos_utils.PosStyles(align: esc_pos_utils.PosAlign.right),
-        ),
-      ]);
-    }
-
-    printer.hr();
-
-    printer.row([
-      esc_pos_utils.PosColumn(
-        text: 'Subtotale',
-        width: 10,
-        styles: const esc_pos_utils.PosStyles(bold: true),
-      ),
-      esc_pos_utils.PosColumn(
-        text: '\$${subtotal.toStringAsFixed(2)}',
-        width: 2,
-        styles: const esc_pos_utils.PosStyles(align: esc_pos_utils.PosAlign.right, bold: true),
-      ),
-    ]);
-
-    final tax = subtotal * (taxPercentage / 100);
-    printer.row([
-      esc_pos_utils.PosColumn(
-        text: 'IVA (${taxPercentage.toStringAsFixed(0)}%)',
-        width: 10,
-        styles: const esc_pos_utils.PosStyles(bold: true),
-      ),
-      esc_pos_utils.PosColumn(
-        text: '\$${tax.toStringAsFixed(2)}',
-        width: 2,
-        styles: const esc_pos_utils.PosStyles(align: esc_pos_utils.PosAlign.right, bold: true),
-      ),
-    ]);
-
-    final total = subtotal + tax;
-    printer.row([
-      esc_pos_utils.PosColumn(
-        text: 'TOTALE',
-        width: 10,
-        styles: const esc_pos_utils.PosStyles(bold: true, height: esc_pos_utils.PosTextSize.size2),
-      ),
-      esc_pos_utils.PosColumn(
-        text: '\$${total.toStringAsFixed(2)}',
-        width: 2,
-        styles: const esc_pos_utils.PosStyles(
-          align: esc_pos_utils.PosAlign.right,
-          bold: true,
-          height: esc_pos_utils.PosTextSize.size2,
-        ),
-      ),
-    ]);
-
-    printer.hr();
-
-    final now = DateTime.now();
-    final dateFormatter = DateFormat('dd/MM/yyyy HH:mm');
+    final displayName = name.length > 18 ? name.substring(0, 18) : name;
+    final namePadding = ' ' * (18 - displayName.length);
+    final quantityStr = quantity.toString().padLeft(3);
+    final totalStr = total.toStringAsFixed(2).padLeft(8);
 
     printer.text(
-      dateFormatter.format(now),
-      styles: const esc_pos_utils.PosStyles(
-        align: esc_pos_utils.PosAlign.center,
-      ),
-      linesAfter: 2,
+      '\x1B\x61\x00\x1B\x21\x10$quantityStr X $totalStr  $displayName$namePadding\x1B\x21\x00\n',
     );
-
-    printer.cut();
   }
+
+  printer.hr();
+
+  // Subtotal and Tax
+  final tax = subtotal * (taxPercentage / 100);
+  final totalAmount = subtotal + tax;
+
+  printer.text(
+    '\x1B\x21\x10 SUBTOTALE:                 ${subtotal.toStringAsFixed(2)} \x1B\x21\x00',
+  );
+  printer.text(
+    '\x1B\x21\x10 IVA (${taxPercentage.toStringAsFixed(0)}%):             ${tax.toStringAsFixed(2)} \x1B\x21\x00',
+  );
+  printer.text(
+    '\x1B\x21\x30 TOTALE:                     ${totalAmount.toStringAsFixed(2)} \x1B\x21\x00',
+  );
+
+  printer.hr();
+
+  // Date and Time
+  final now = DateTime.now();
+  final dateFormatter = DateFormat('dd/MM/yyyy HH:mm');
+  printer.text(
+    dateFormatter.format(now),
+    styles: const esc_pos_utils.PosStyles(
+      align: esc_pos_utils.PosAlign.center,
+    ),
+    linesAfter: 2,
+  );
+
+  printer.cut();
+}
+
 
   // ============================================================================
   // SUNMI PRINTER - ORDER PRINTING
@@ -503,6 +456,7 @@ class PrintingService {
     double totalAmount,
     String paymentMethod, {
     String? tableInfo,
+    double totalDiscount = 0,
   }) async {
     try {
       print('Starting receipt printing...');
@@ -521,6 +475,8 @@ class PrintingService {
         'tableInfo': tableInfo,
         'date': DateTime.now().toIso8601String(),
         'paymentType': paymentMethod,
+        'discount': totalDiscount,
+        'totalDiscount': totalDiscount,
       };
 
       switch (printer.receiptPrinterType) {
@@ -587,32 +543,91 @@ class PrintingService {
 
   String _generateFiscalXml(Map<String, dynamic> receiptData) {
     final items = receiptData['items'] as List<Map<String, dynamic>>;
-    final total = receiptData['total'] as double;
+    final total = (receiptData['total'] as num?)?.toDouble() ?? 0.0;
     final date = receiptData['date'] as String?;
     final paymentType = receiptData['paymentType'] as String?;
+    final totalDiscountPercent =
+        (receiptData['discount'] ?? receiptData['totalDiscount']) as num?;
+    final subtotalDiscountAmountOverride =
+        (receiptData['totalDiscountAmount'] as num?)?.toDouble() ?? 0.0;
 
-    String itemsXml = '';
+    String formatAmount(double value) =>
+        value.toStringAsFixed(2).replaceAll('.', ',');
+    String formatQty(double value) =>
+        value.toStringAsFixed(3).replaceAll('.', ',');
+
+    double baseSubtotal = 0;
+    double itemDiscountTotal = 0;
+    final StringBuffer itemsBuffer = StringBuffer();
+
     for (final item in items) {
       final name = item['name'] as String? ?? 'Item';
-      final price = item['price'] as double? ?? 0.0;
-      final quantity = item['quantity'] as int? ?? 1;
+      final price = (item['price'] as num?)?.toDouble() ?? 0.0;
+      final quantity = (item['quantity'] as num?)?.toDouble() ?? 1.0;
       final ivaCode = item['ivaCode'] as String?;
+      final itemDiscountPercent = (item['discount'] as num?)?.toDouble() ?? 0.0;
+      final itemDiscountAmountRaw =
+          (item['discountAmount'] as num?)?.toDouble() ?? 0.0;
 
-      final formattedQty = quantity.toStringAsFixed(3).replaceAll('.', ',');
-      final formattedPrice = price.toStringAsFixed(2).replaceAll('.', ',');
+      final formattedQty = formatQty(quantity);
+      final formattedPrice = formatAmount(price);
 
       int department = 1;
       if (ivaCode != null && SimpleIvaManager.isValid(ivaCode)) {
         department = SimpleIvaManager.getDepartment(ivaCode);
       }
 
-      itemsXml += '''
+      final itemBaseTotal = price * quantity;
+      final itemDiscountAmount = itemDiscountAmountRaw > 0
+          ? itemDiscountAmountRaw
+          : itemDiscountPercent > 0
+              ? itemBaseTotal * (itemDiscountPercent / 100)
+              : 0.0;
+
+      baseSubtotal += itemBaseTotal;
+      itemDiscountTotal += itemDiscountAmount;
+
+      itemsBuffer.write('''
         <printRecItem operator="1" description="$name" quantity="$formattedQty" unitPrice="$formattedPrice" department="$department" />
-''';
+''');
+
+      if (itemDiscountAmount > 0) {
+        itemsBuffer.write('''
+        <printRecItemAdjustment operator="1" adjustmentType="0" description="Sconto" amount="${formatAmount(itemDiscountAmount)}" justification="1" />
+''');
+      }
     }
+
+    final subtotalAfterItemDiscounts = baseSubtotal - itemDiscountTotal;
+
+    double subtotalDiscountAmount = subtotalDiscountAmountOverride;
+    final double totalDiscountPercentValue =
+        (totalDiscountPercent as num?)?.toDouble() ?? 0.0;
+    if (subtotalDiscountAmount <= 0 && totalDiscountPercentValue > 0) {
+      subtotalDiscountAmount =
+          subtotalAfterItemDiscounts * (totalDiscountPercentValue / 100);
+    }
+    if (subtotalDiscountAmount <= 0 && total > 0 && subtotalAfterItemDiscounts > total) {
+      subtotalDiscountAmount = subtotalAfterItemDiscounts - total;
+    }
+    if (subtotalDiscountAmount < 0) {
+      subtotalDiscountAmount = 0;
+    }
+
+    final calculatedTotal =
+        subtotalAfterItemDiscounts - subtotalDiscountAmount;
+    final paymentAmount = total > 0 ? total : calculatedTotal;
 
     final formattedDate =
         date?.split('T').first ?? DateTime.now().toIso8601String().split('T')[0];
+   
+
+    String subtotalSection = '';
+    if (subtotalDiscountAmount > 0) {
+      subtotalSection = '''
+      <printRecSubtotal operator="1" option="1" />
+      <printRecSubtotalAdjustment operator="1" adjustmentType="1" description="Sconto" amount="${formatAmount(subtotalDiscountAmount)}" justification="1" />''';
+    }
 
     String paymentsXml = '';
     String paymentTypeCode = '0';
@@ -642,7 +657,7 @@ class PrintingService {
       }
     }
 
-    final formattedAmount = total.toStringAsFixed(2).replaceAll('.', ',');
+    final formattedAmount = formatAmount(paymentAmount);
     paymentsXml = '''
       <printRecTotal operator="1" description="$paymentDescription" payment="$formattedAmount" paymentType="$paymentTypeCode" index="$indexCode" />''';
 
@@ -651,8 +666,10 @@ class PrintingService {
   <soapenv:Body>
     <printerFiscalReceipt>
       <beginFiscalReceipt operator="1" />
-      $itemsXml
+      ${itemsBuffer.toString()}
+      $subtotalSection
       <printRecMessage operator="1" message="$formattedDate" type="1" font="1" messageType="2" index="1" />
+
       $paymentsXml
       <endFiscalReceipt operator="1" />
     </printerFiscalReceipt>
@@ -767,11 +784,12 @@ class PrintingService {
 
   String _generateFiscalXmlRCH(Map<String, dynamic> receiptData) {
     final items = receiptData['items'] as List<Map<String, dynamic>>;
-    final total = receiptData['total'] as double;
-    final tableInfo = receiptData['tableInfo'] as String?;
     final date = receiptData['date'] as String?;
     final paymentType = receiptData['paymentType'] as String?;
-
+    final totalDiscountPercent =
+        ((receiptData['discount'] ?? receiptData['totalDiscount']) as num?)
+                ?.toDouble() ??
+            0.0;
     final ivaMapping = {
       '04': {'department': 3, 'rate': 4.0},
       '05': {'department': 4, 'rate': 5.0},
@@ -779,33 +797,35 @@ class PrintingService {
       '22': {'department': 1, 'rate': 22.0},
     };
 
-    String itemsXml = '';
+    final itemsBuffer = StringBuffer();
 
     for (final item in items) {
       final name = item['name'] as String? ?? 'Item';
       final price = item['price'] as double? ?? 0.0;
       final quantity = item['quantity'] as int? ?? 1;
       final ivaCode = item['ivaCode'] as String?;
+      final itemDiscountPercent = (item['discount'] as num?)?.toDouble() ?? 0.0;
 
       int department = 1;
-
       if (ivaCode != null && ivaMapping.containsKey(ivaCode)) {
         department = ivaMapping[ivaCode]!['department'] as int;
       }
 
       final priceInCents = (price * 100).toInt();
-
       final quantityParam = quantity > 1 ? '/*$quantity' : '';
-
       final escapedDesc = _escapeRCHDescription(name);
 
-      itemsXml += '<cmd>=R$department/\$$priceInCents$quantityParam/($escapedDesc)</cmd>\n';
+      itemsBuffer.writeln('<cmd>=R$department/\$$priceInCents$quantityParam/($escapedDesc)</cmd>');
+      if (itemDiscountPercent > 0) {
+        itemsBuffer.writeln('<cmd>=%/*$itemDiscountPercent</cmd>');
+      }
     }
 
-    String subtotalXml = '<cmd>=S</cmd>\n';
+    final subtotalXml = '<cmd>=S</cmd>\n';
+    final subtotalDiscountXml =
+        totalDiscountPercent > 0 ? '<cmd>=%/*$totalDiscountPercent</cmd>\n' : '';
 
-    String paymentXml = '';
-
+    String paymentXml;
     if (paymentType != null) {
       switch (paymentType.toUpperCase()) {
         case 'CARTA':
@@ -831,18 +851,20 @@ class PrintingService {
     }
 
     String additionalInfoXml = '';
-
     if (date != null && date.isNotEmpty) {
       final formattedDate = date.split('T').first;
-      additionalInfoXml += '<cmd>="/?A/(Data: $formattedDate)</cmd>\n';
+      additionalInfoXml = '<cmd>="/?A/(Data: $formattedDate)</cmd>\n';
     }
 
-    return '''<?xml version="1.0" encoding="UTF-8"?>
-<Service>
-$itemsXml
-$subtotalXml
-$paymentXml
-</Service>''';
+    final serviceBuffer = StringBuffer('<?xml version="1.0" encoding="UTF-8"?>\n<Service>\n')
+      ..write(itemsBuffer.toString())
+      ..write(subtotalXml)
+      ..write(subtotalDiscountXml)
+      ..write(paymentXml)
+      ..write(additionalInfoXml)
+      ..write('</Service>');
+
+    return serviceBuffer.toString();
   }
 
   String _escapeRCHDescription(String description) {

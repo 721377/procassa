@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models.dart';
 import '../services/database_service.dart';
@@ -125,7 +126,7 @@ class _ArticoliScreenState extends State<ArticoliScreen> {
             
             // Codice
             Text(
-              'Codice',
+              'Codice (Opzionale)',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -136,7 +137,7 @@ class _ArticoliScreenState extends State<ArticoliScreen> {
             TextField(
               controller: _codiceController,
               decoration: InputDecoration(
-                hintText: 'Inserisci codice',
+                hintText: 'Lascia vuoto per generare automaticamente',
                 filled: true,
                 fillColor: Colors.grey[50],
                 border: OutlineInputBorder(
@@ -369,7 +370,7 @@ class _ArticoliScreenState extends State<ArticoliScreen> {
                         );
                       }).toList(),
                       onChanged: (value) {
-                        setState(() {
+                        setDialogState(() {
                           _selectedCategoriaId = value;
                         });
                       },
@@ -435,15 +436,20 @@ class _ArticoliScreenState extends State<ArticoliScreen> {
     );
   }
 
+  String _generateRandomCode() {
+    final random = Random();
+    const chars = '0123456789';
+    return List.generate(8, (index) => chars[random.nextInt(chars.length)]).join();
+  }
+
   Future<void> _saveArticolo() async {
     if (_descrizioneController.text.isEmpty ||
-        _codiceController.text.isEmpty ||
         _prezzoController.text.isEmpty ||
         _selectedIvaValue == null ||
         _selectedCategoriaId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Compila tutti i campi'),
+          content: const Text('Compila tutti i campi obbligatori'),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
@@ -451,6 +457,37 @@ class _ArticoliScreenState extends State<ArticoliScreen> {
         ),
       );
       return;
+    }
+
+    String codice = _codiceController.text.trim();
+    
+    // Check if code exists
+    if (codice.isNotEmpty) {
+      final existingArticolo = await _db.getArticoloByCodice(codice);
+      if (existingArticolo != null && 
+          (_editingArticolo == null || existingArticolo.id != _editingArticolo!.id)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Un articolo con codice "$codice" esiste già'),
+            backgroundColor: Colors.orange[800],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        );
+        return;
+      }
+    } else {
+      // Generate random code if not provided
+      bool isUnique = false;
+      while (!isUnique) {
+        codice = _generateRandomCode();
+        final existing = await _db.getArticoloByCodice(codice);
+        if (existing == null) {
+          isUnique = true;
+        }
+      }
     }
 
     try {
@@ -462,7 +499,7 @@ class _ArticoliScreenState extends State<ArticoliScreen> {
           descrizione: _descrizioneController.text,
           prezzo: prezzo,
           iva: _selectedIvaValue!,
-          codice: _codiceController.text,
+          codice: codice,
           categoriaId: _selectedCategoriaId!,
         );
         await _db.updateArticolo(updated);
@@ -471,7 +508,7 @@ class _ArticoliScreenState extends State<ArticoliScreen> {
           descrizione: _descrizioneController.text,
           prezzo: prezzo,
           iva: _selectedIvaValue!,
-          codice: _codiceController.text,
+          codice: codice,
           categoriaId: _selectedCategoriaId!,
         );
         await _db.insertArticolo(newArticolo);

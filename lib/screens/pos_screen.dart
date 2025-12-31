@@ -44,6 +44,7 @@ class _PosScreenState extends State<PosScreen> {
   final String _selectedMenu = 'pos';
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   String? _selectedPaymentMethod;
+  double _totalDiscount = 0;
   static const Color surfaceColor = Colors.white; // Card surface
   static const Color textSecondary = Color(0xFF6C757D); // Secondary text
 // Hover color
@@ -51,7 +52,8 @@ class _PosScreenState extends State<PosScreen> {
   @override
   void initState() {
     super.initState();
-    _showCart = false;
+    // Default to show cart on larger screens
+    _showCart = MediaQueryData.fromWindow(ui.window).size.width >= 1024;
     _loadData();
   }
 
@@ -91,8 +93,27 @@ class _PosScreenState extends State<PosScreen> {
       MediaQuery.of(context).size.width < 1024;
   bool get _isLargeScreen => MediaQuery.of(context).size.width >= 1024;
 
-  double get totalAmount => _cartItems.fold(0, (sum, item) => sum + item.total);
+  double get totalAmount {
+    double baseTotal = _cartItems.fold(0, (sum, item) => sum + item.total);
+    if (_totalDiscount > 0) {
+      return baseTotal * (1 - (_totalDiscount / 100));
+    }
+    return baseTotal;
+  }
   int get totalItems => _cartItems.fold(0, (sum, item) => sum + item.quantity);
+
+  void _applyDiscount(double discount, CartItem? item) {
+    setState(() {
+      if (item == null) {
+        _totalDiscount = discount;
+      } else {
+        final index = _cartItems.indexWhere((i) => i.product.id == item.product.id);
+        if (index != -1) {
+          _cartItems[index] = _cartItems[index].copyWith(discount: discount);
+        }
+      }
+    });
+  }
 
   void _addToCart(Product product, {int quantity = 1}) {
     setState(() {
@@ -123,6 +144,7 @@ class _PosScreenState extends State<PosScreen> {
   void _clearCart() {
     setState(() {
       CartFunctions.clearCart(_cartItems);
+      _totalDiscount = 0;
       _clearKeypad();
     });
   }
@@ -626,6 +648,7 @@ class _PosScreenState extends State<PosScreen> {
         'name': cartItem.product.name,
         'price': cartItem.product.price,
         'quantity': cartItem.quantity,
+        'discount': cartItem.discount,
       };
     }).toList();
 
@@ -633,6 +656,7 @@ class _PosScreenState extends State<PosScreen> {
       items,
       total,
       paymentMethod,
+      totalDiscount: _totalDiscount,
     );
 
     final errors = <String>[];
@@ -681,6 +705,7 @@ class _PosScreenState extends State<PosScreen> {
           total,
           paymentMethod,
           _cartItems,
+          discount: _totalDiscount,
         );
 
         if (transactionId > 0) {
@@ -688,6 +713,11 @@ class _PosScreenState extends State<PosScreen> {
             transactionId,
             fiscalData,
           );
+        }
+
+        _clearCart();
+        if (mounted) {
+          setState(() => _selectedPaymentMethod = null);
         }
       }
     }
@@ -798,7 +828,7 @@ class _PosScreenState extends State<PosScreen> {
                                 ),
                                 SizedBox(height: 8),
                                 Text(
-                                  'La ricevuta non è stata stampata. La stampante non risponde.',
+                                  'Lo scontrino non è stato stampato. La stampante non risponde.',
                                   style: TextStyle(
                                     fontSize: 13,
                                     color: textSecondary,
@@ -845,10 +875,6 @@ class _PosScreenState extends State<PosScreen> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () {
-                        if (responseBody != null && errors.isEmpty) {
-                          _clearCart();
-                          setState(() => _selectedPaymentMethod = null);
-                        }
                         Navigator.pop(context);
                       },
                       style: ElevatedButton.styleFrom(
@@ -908,6 +934,11 @@ class _PosScreenState extends State<PosScreen> {
       );
       CartFunctions.addToCartWithCustomPrice(_cartItems, product, price);
     });
+  }
+  void _opencartpage() {
+    if (!_showCart) {
+      _toggleCart();
+    }
   }
 
   // Future<void> _printPaymentReceipt(String paymentMethod) async {
@@ -1364,70 +1395,27 @@ class _PosScreenState extends State<PosScreen> {
       );
     }
 
-    // Desktop layout - Wide screen (Vertical split: Products + Cart right with integrated keypad)
-    if (_isLargeScreen) {
-      return Row(
-        children: [
-          // Products Panel (Left)
-          Expanded(
-            flex: 3,
-            child: _buildProductsPanel(filteredList),
-          ),
-
-          // Cart Panel (Right - with integrated keypad)
-          if (_showCart)
-            Container(
-              width: 420,
-              constraints: const BoxConstraints(
-                maxWidth: 420,
-                minWidth: 420,
-              ),
-              decoration: const BoxDecoration(
-                border: Border(
-                  left: BorderSide(color: Color(0xFFE5E7EB), width: 1),
-                ),
-              ),
-              child: CartPanel(
-                cartItems: _cartItems,
-                totalAmount: totalAmount,
-                totalItems: totalItems,
-                onUpdateQuantity: _updateQuantity,
-                onRemoveItem: _removeFromCart,
-                onClearCart: _clearCart,
-                keypadNumber: '',
-                onNumberTap: _handleNumberInput,
-                onClear: _clearKeypad,
-                onBackspace: _handleBackspace,
-                onXTap: _handleXPress,
-                xPressed: false,
-                onCloseCart: () => setState(() {
-                  _showCart = false;
-                }),
-                onOpenKeypad: _toggleKeypad,
-                onPrint: _handlePrint,
-              ),
-            ),
-        ],
-      );
-    }
-
-    // Medium screen layout - Cart on right with Keypad above or below
+    // Wide screen layout (Tablet & Desktop) - Products + Cart right with integrated keypad
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Products Panel
+        // Products Panel (Left)
         Expanded(
-          flex: _showKeypad ? 2 : 3,
+          flex: 3,
           child: _buildProductsPanel(filteredList),
         ),
 
-        // Keypad or Cart Panel (Cart takes priority)
-        if (_showCart)
+        // Cart Panel (Right - with integrated keypad)
+        if (_showCart || _showKeypad)
           Container(
-            width: 380,
+            width: 400,
             constraints: const BoxConstraints(
-              maxWidth: 380,
-              minWidth: 380,
+              maxWidth: 400,
+              minWidth: 350,
+            ),
+            decoration: const BoxDecoration(
+              border: Border(
+                left: BorderSide(color: Color(0xFFE5E7EB), width: 1),
+              ),
             ),
             child: CartPanel(
               cartItems: _cartItems,
@@ -1447,16 +1435,9 @@ class _PosScreenState extends State<PosScreen> {
               }),
               onOpenKeypad: _toggleKeypad,
               onPrint: _handlePrint,
+              onApplyDiscount: _applyDiscount,
+              totalDiscount: _totalDiscount,
             ),
-          )
-        else if (_showKeypad)
-          Container(
-            width: 380,
-            constraints: const BoxConstraints(
-              maxWidth: 380,
-              minWidth: 380,
-            ),
-            // child: _buildDesktopKeypadPanel(),
           ),
       ],
     );
@@ -1481,6 +1462,8 @@ class _PosScreenState extends State<PosScreen> {
       }),
       onOpenKeypad: _toggleKeypad,
       onPrint: _handlePrint,
+      onApplyDiscount: _applyDiscount,
+      totalDiscount: _totalDiscount,
       // onPaymentProcessed: _printPaymentReceipt,
     );
   }
@@ -1502,7 +1485,7 @@ class _PosScreenState extends State<PosScreen> {
 
         // Keypad Panel (Bottom)
         Expanded(
-          flex: 2,
+          flex: 3,
           child: _buildMobileKeypadPanel(),
         ),
       ],
@@ -1523,10 +1506,8 @@ class _PosScreenState extends State<PosScreen> {
               onClear: _clearKeypad,
               onBackspace: _handleBackspace,
               onXTap: _handleXPress,
-              onPayment: _cartItems.isNotEmpty && _selectedPaymentMethod != null
-                  ? () => _processPayment(totalAmount)
-                  : null,
-              onPreAccount: () {},
+              onPayment: ()=> _opencartpage(),
+              onPreAccount: () => _handlePrint(),
               totalAmount: totalAmount,
               selectedPaymentMethod: _selectedPaymentMethod,
               onShowPaymentModal: () => _showPaymentMethodModal(context),

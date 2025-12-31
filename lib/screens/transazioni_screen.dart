@@ -6,7 +6,8 @@ import '../services/database_service.dart';
 import '../services/printing_service.dart';
 
 class TransazioniScreen extends StatefulWidget {
-  const TransazioniScreen({super.key});
+  final bool? initialIsReturn;
+  const TransazioniScreen({super.key, this.initialIsReturn});
 
   @override
   State<TransazioniScreen> createState() => _TransazioniScreenState();
@@ -36,6 +37,7 @@ class _TransazioniScreenState extends State<TransazioniScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedIsReturn = widget.initialIsReturn;
     _loadTransactions();
   }
 
@@ -136,62 +138,72 @@ class _TransazioniScreenState extends State<TransazioniScreen> {
     return methods[method] ?? method;
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(String title, String value, IconData icon, Color color, {VoidCallback? onTap, bool isSelected = false}) {
     final isSmallScreen = MediaQuery.of(context).size.width < 768;
     
     return Expanded(
-      child: Container(
-        padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFF1F5F9)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, size: isSmallScreen ? 14 : 16, color: color),
+          child: Container(
+            padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isSelected ? color : const Color(0xFFF1F5F9),
+                width: isSelected ? 2 : 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: isSelected ? color.withOpacity(0.1) : Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: isSmallScreen ? 10 : 12,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w500,
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(icon, size: isSmallScreen ? 14 : 16, color: color),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 10 : 12,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 16 : 20,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1E293B),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: isSmallScreen ? 16 : 20,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF1E293B),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -247,6 +259,11 @@ class _TransazioniScreenState extends State<TransazioniScreen> {
                       '€${totalAmount.toStringAsFixed(2)}',
                       Icons.euro_rounded,
                       const Color(0xFF10B981),
+                      isSelected: _selectedIsReturn == null,
+                      onTap: () {
+                        setState(() => _selectedIsReturn = null);
+                        _loadTransactions();
+                      },
                     ),
                     SizedBox(width: isSmallScreen ? 8 : 12),
                     _buildStatCard(
@@ -254,6 +271,11 @@ class _TransazioniScreenState extends State<TransazioniScreen> {
                       salesCount.toString(),
                       Icons.shopping_bag_rounded,
                       const Color(0xFF2563EB),
+                      isSelected: _selectedIsReturn == false,
+                      onTap: () {
+                        setState(() => _selectedIsReturn = false);
+                        _loadTransactions();
+                      },
                     ),
                     SizedBox(width: isSmallScreen ? 8 : 12),
                     _buildStatCard(
@@ -261,6 +283,11 @@ class _TransazioniScreenState extends State<TransazioniScreen> {
                       returnsCount.toString(),
                       Icons.undo_rounded,
                       const Color(0xFFEF4444),
+                      isSelected: _selectedIsReturn == true,
+                      onTap: () {
+                        setState(() => _selectedIsReturn = true);
+                        _loadTransactions();
+                      },
                     ),
                   ],
                 ),
@@ -744,6 +771,36 @@ class _TransazioniScreenState extends State<TransazioniScreen> {
                             color: const Color(0xFF64748B),
                           ),
                         ),
+                        if (transaction.discount > 0 || transaction.items.any((i) => i.discount > 0))
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFECFDF5),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.percent_rounded,
+                                  size: isSmallScreen ? 10 : 12,
+                                  color: const Color(0xFF10B981),
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  'SCONTO',
+                                  style: TextStyle(
+                                    fontSize: isSmallScreen ? 9 : 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF10B981),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                       ],
                     ),
                   ],
@@ -982,16 +1039,42 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                                         color: const Color(0xFF64748B),
                                       ),
                                     ),
+                                    if (item.discount > 0)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 2),
+                                        child: Text(
+                                          'Sconto: ${item.discount.toStringAsFixed(0)}%',
+                                          style: TextStyle(
+                                            fontSize: isSmallScreen ? 11 : 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: const Color(0xFF10B981),
+                                          ),
+                                        ),
+                                      ),
                                   ],
                                 ),
                               ),
-                              Text(
-                                '€${item.total.toStringAsFixed(2)}',
-                                style: TextStyle(
-                                  fontSize: isSmallScreen ? 13 : 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF0F172A),
-                                ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    '€${item.total.toStringAsFixed(2)}',
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 13 : 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFF0F172A),
+                                    ),
+                                  ),
+                                  if (item.discount > 0)
+                                    Text(
+                                      '€${(item.price * item.quantity).toStringAsFixed(2)}',
+                                      style: TextStyle(
+                                        fontSize: isSmallScreen ? 10 : 11,
+                                        decoration: TextDecoration.lineThrough,
+                                        color: const Color(0xFF94A3B8),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ],
                           ),
@@ -1009,24 +1092,72 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Column(
                       children: [
-                        Text(
-                          'Totale',
-                          style: TextStyle(
-                            fontSize: isSmallScreen ? 15 : 16,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF475569),
+                        if (transaction.discount > 0) ...[
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Subtotale',
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 13 : 14,
+                                  color: const Color(0xFF64748B),
+                                ),
+                              ),
+                              Text(
+                                '€${transaction.items.fold(0.0, (sum, item) => sum + item.total).toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 13 : 14,
+                                  color: const Color(0xFF0F172A),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        Text(
-                          '€${transaction.total.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontSize: isSmallScreen ? 18 : 20,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF0F172A),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Sconto Totale (${transaction.discount.toStringAsFixed(0)}%)',
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 13 : 14,
+                                  color: const Color(0xFF10B981),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                '-€${(transaction.items.fold(0.0, (sum, item) => sum + item.total) - transaction.total).toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF10B981),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
+                          const Divider(height: 24),
+                        ],
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Totale',
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 15 : 16,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF475569),
+                              ),
+                            ),
+                            Text(
+                              '€${transaction.total.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 18 : 20,
+                                fontWeight: FontWeight.w800,
+                                color: const Color(0xFF0F172A),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

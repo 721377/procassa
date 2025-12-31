@@ -100,22 +100,27 @@ class PaymentService {
   Future<String?> printReceiptAndGetResponse(
       List<Map<String, dynamic>> items,
       double total,
-      String paymentMethod) async {
+      String paymentMethod, {
+      double totalDiscount = 0,
+    }) async {
     return await _printingService.printReceiptHybrid(
       items,
       total,
       paymentMethod,
+      totalDiscount: totalDiscount,
     );
   }
 
   Future<int> saveTransaction(
       double total,
       String paymentMethod,
-      List<CartItem> cartItems) async {
+      List<CartItem> cartItems,
+      {double discount = 0}) async {
     try {
       final transaction = Transaction(
         date: DateTime.now(),
         total: total,
+        discount: discount,
         paymentMethod: paymentMethod,
         isReturn: false,
         items: cartItems.map((cartItem) {
@@ -124,7 +129,8 @@ class PaymentService {
             productName: cartItem.product.name,
             price: cartItem.product.price,
             quantity: cartItem.quantity,
-            total: cartItem.product.price * cartItem.quantity,
+            total: cartItem.total,
+            discount: cartItem.discount,
           );
         }).toList(),
       );
@@ -139,6 +145,7 @@ class PaymentService {
             price: item.price,
             quantity: item.quantity,
             total: item.total,
+            discount: item.discount,
           ),
         );
       }

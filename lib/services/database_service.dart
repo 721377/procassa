@@ -24,7 +24,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 9,
+      version: 10,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -89,6 +89,10 @@ class DatabaseService {
       await db.execute('ALTER TABLE iva ADD COLUMN ivaCode TEXT');
       await db.execute('ALTER TABLE iva ADD COLUMN department INTEGER');
     }
+    if (oldVersion < 10) {
+      await db.execute('ALTER TABLE transactions ADD COLUMN discount REAL DEFAULT 0');
+      await db.execute('ALTER TABLE transaction_items ADD COLUMN discount REAL DEFAULT 0');
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -151,6 +155,7 @@ class DatabaseService {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         date TEXT NOT NULL,
         total REAL NOT NULL,
+        discount REAL DEFAULT 0,
         paymentMethod TEXT NOT NULL,
         isReturn INTEGER DEFAULT 0,
         notes TEXT,
@@ -170,6 +175,7 @@ class DatabaseService {
         price REAL NOT NULL,
         quantity INTEGER NOT NULL,
         total REAL NOT NULL,
+        discount REAL DEFAULT 0,
         FOREIGN KEY (transactionId) REFERENCES transactions(id)
       )
     ''');
@@ -243,6 +249,17 @@ class DatabaseService {
       where: 'id = ?',
       whereArgs: [id],
     );
+  }
+
+  Future<Articolo?> getArticoloByCodice(String codice) async {
+    final db = await database;
+    final maps = await db.query(
+      'articoli',
+      where: 'codice = ?',
+      whereArgs: [codice],
+    );
+    if (maps.isEmpty) return null;
+    return Articolo.fromMap(maps[0]);
   }
 
   Future<int> insertStampante(Stampante stampante) async {

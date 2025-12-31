@@ -194,21 +194,32 @@ class TipoPagamento {
 class CartItem {
   final Product product;
   int quantity;
-  double get total => product.price * quantity;
+  double discount; // Percentage discount (0-100)
+  
+  double get total {
+    double baseTotal = product.price * quantity;
+    if (discount > 0) {
+      return baseTotal * (1 - (discount / 100));
+    }
+    return baseTotal;
+  }
 
   CartItem({
     required this.product,
     this.quantity = 1,
+    this.discount = 0,
   });
 
   // Copy with method for CartItem
   CartItem copyWith({
     Product? product,
     int? quantity,
+    double? discount,
   }) {
     return CartItem(
       product: product ?? this.product,
       quantity: quantity ?? this.quantity,
+      discount: discount ?? this.discount,
     );
   }
 }
@@ -265,6 +276,7 @@ class Transaction {
   final int? id;
   final DateTime date;
   final double total;
+  final double discount; // Percentage discount for total
   final String paymentMethod;
   final bool isReturn;
   late List<TransactionItem> items;
@@ -279,6 +291,7 @@ class Transaction {
     this.id,
     required this.date,
     required this.total,
+    this.discount = 0,
     required this.paymentMethod,
     this.isReturn = false,
     List<TransactionItem>? items,
@@ -297,6 +310,7 @@ class Transaction {
       'id': id,
       'date': date.toIso8601String(),
       'total': total,
+      'discount': discount,
       'paymentMethod': paymentMethod,
       'isReturn': isReturn ? 1 : 0,
       'notes': notes,
@@ -313,6 +327,7 @@ class Transaction {
       id: map['id'],
       date: DateTime.parse(map['date']),
       total: map['total'],
+      discount: map['discount']?.toDouble() ?? 0.0,
       paymentMethod: map['paymentMethod'],
       isReturn: (map['isReturn'] as int? ?? 0) == 1,
       items: [],
@@ -333,6 +348,7 @@ class TransactionItem {
   final double price;
   final int quantity;
   final double total;
+  final double discount; // Percentage discount for item
 
   TransactionItem({
     this.id,
@@ -341,6 +357,7 @@ class TransactionItem {
     required this.price,
     required this.quantity,
     required this.total,
+    this.discount = 0,
   });
 
   Map<String, dynamic> toMap() {
@@ -351,6 +368,7 @@ class TransactionItem {
       'price': price,
       'quantity': quantity,
       'total': total,
+      'discount': discount,
     };
   }
 
@@ -362,6 +380,7 @@ class TransactionItem {
       price: map['price'],
       quantity: map['quantity'],
       total: map['total'],
+      discount: map['discount']?.toDouble() ?? 0.0,
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'transazioni_screen.dart';
 
 class StatisticheScreen extends StatelessWidget {
   const StatisticheScreen({super.key});
@@ -93,10 +94,10 @@ class StatisticheScreen extends StatelessWidget {
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: isSmallScreen ? 2 : 4,
+              crossAxisCount: isSmallScreen ? 2 : 6,
               mainAxisSpacing: 16,
               crossAxisSpacing: 16,
-              childAspectRatio: isSmallScreen ? 1.1 : 1.3,
+              childAspectRatio: isSmallScreen ? 1.1 : 1.0,
               children: [
                 _buildStatCard(
                   title: 'Totale Vendite',
@@ -104,6 +105,38 @@ class StatisticheScreen extends StatelessWidget {
                   change: '+12.5%',
                   icon: Icons.euro_rounded,
                   color: const Color(0xFF10B981),
+                  context: context,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const TransazioniScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildStatCard(
+                  title: 'Resi',
+                  value: '12',
+                  change: '+2.1%',
+                  icon: Icons.undo_rounded,
+                  color: const Color(0xFFEF4444),
+                  context: context,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const TransazioniScreen(initialIsReturn: true),
+                      ),
+                    );
+                  },
+                ),
+                _buildStatCard(
+                  title: 'Sconti',
+                  value: '€124.00',
+                  change: '+5.2%',
+                  icon: Icons.percent_rounded,
+                  color: const Color(0xFFF59E0B),
                   context: context,
                 ),
                 _buildStatCard(
@@ -113,6 +146,14 @@ class StatisticheScreen extends StatelessWidget {
                   icon: Icons.shopping_bag_rounded,
                   color: const Color(0xFF3B82F6),
                   context: context,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const TransazioniScreen(initialIsReturn: false),
+                      ),
+                    );
+                  },
                 ),
                 _buildStatCard(
                   title: 'Scontrino Medio',
@@ -291,91 +332,99 @@ class StatisticheScreen extends StatelessWidget {
     required IconData icon,
     required Color color,
     required BuildContext context,
+    VoidCallback? onTap,
   }) {
     final isSmallScreen = MediaQuery.of(context).size.width < 768;
     
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, size: isSmallScreen ? 18 : 20, color: color),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: change.contains('+')
-                      ? const Color(0xFFECFDF5)
-                      : const Color(0xFFFEF2F2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      change.contains('+')
-                          ? Icons.trending_up_rounded
-                          : Icons.trending_down_rounded,
-                      size: 12,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(icon, size: isSmallScreen ? 18 : 20, color: color),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
                       color: change.contains('+')
-                          ? const Color(0xFF10B981)
-                          : const Color(0xFFEF4444),
+                          ? const Color(0xFFECFDF5)
+                          : const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      change,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: change.contains('+')
-                            ? const Color(0xFF10B981)
-                            : const Color(0xFFEF4444),
-                      ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          change.contains('+')
+                              ? Icons.trending_up_rounded
+                              : Icons.trending_down_rounded,
+                          size: 12,
+                          color: change.contains('+')
+                              ? const Color(0xFF10B981)
+                              : const Color(0xFFEF4444),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          change,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: change.contains('+')
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFFEF4444),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 12 : 14,
+                  color: const Color(0xFF64748B),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 20 : 24,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF0F172A),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: isSmallScreen ? 12 : 14,
-              color: const Color(0xFF64748B),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: isSmallScreen ? 20 : 24,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF0F172A),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
