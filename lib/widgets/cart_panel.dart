@@ -177,12 +177,12 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
         builder: (context, setModalState) {
           return Dialog(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(16),
             ),
             insetPadding: const EdgeInsets.all(20),
             child: Container(
-              width: 500, // Increased from 420
-              padding: const EdgeInsets.all(28),
+              constraints: const BoxConstraints(maxWidth: 420), // Added constraint
+              padding: const EdgeInsets.all(20), // Reduced padding
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -194,7 +194,7 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                         Text(
                           'Applica Sconto',
                           style: TextStyle(
-                            fontSize: 22, // Increased
+                            fontSize: 18, // Reduced
                             fontWeight: FontWeight.w700,
                             color: Colors.grey.shade900,
                           ),
@@ -207,7 +207,7 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                               color: Colors.grey.shade100,
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            child: const Icon(Icons.close, size: 20),
+                            child: const Icon(Icons.close, size: 16),
                           ),
                           style: IconButton.styleFrom(
                             visualDensity: VisualDensity.compact,
@@ -216,14 +216,14 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                       ],
                     ),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16), // Reduced
 
                     // Discount Type Selector
                     Container(
-                      height: 48, // Increased
+                      height: 40, // Reduced
                       decoration: BoxDecoration(
                         color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.grey.shade200),
                       ),
                       child: Row(
@@ -233,8 +233,8 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                               onTap: () =>
                                   setModalState(() => isTotalDiscount = true),
                               borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(12),
-                                bottomLeft: Radius.circular(12),
+                                topLeft: Radius.circular(8),
+                                bottomLeft: Radius.circular(8),
                               ),
                               child: Container(
                                 alignment: Alignment.center,
@@ -243,8 +243,8 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                                       ? const Color(0xFF4361EE)
                                       : Colors.transparent,
                                   borderRadius: const BorderRadius.only(
-                                    topLeft: Radius.circular(12),
-                                    bottomLeft: Radius.circular(12),
+                                    topLeft: Radius.circular(8),
+                                    bottomLeft: Radius.circular(8),
                                   ),
                                   border: isTotalDiscount
                                       ? null
@@ -255,11 +255,11 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                                           ),
                                         ),
                                 ),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(vertical: 8),
                                 child: Text(
                                   'Totale',
                                   style: TextStyle(
-                                    fontSize: 15, // Increased
+                                    fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                     color: isTotalDiscount
                                         ? Colors.white
@@ -278,8 +278,8 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                                     : null;
                               }),
                               borderRadius: const BorderRadius.only(
-                                topRight: Radius.circular(12),
-                                bottomRight: Radius.circular(12),
+                                topRight: Radius.circular(8),
+                                bottomRight: Radius.circular(8),
                               ),
                               child: Container(
                                 alignment: Alignment.center,
@@ -288,15 +288,15 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                                       ? const Color(0xFF4361EE)
                                       : Colors.transparent,
                                   borderRadius: const BorderRadius.only(
-                                    topRight: Radius.circular(12),
-                                    bottomRight: Radius.circular(12),
+                                    topRight: Radius.circular(8),
+                                    bottomRight: Radius.circular(8),
                                   ),
                                 ),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(vertical: 8),
                                 child: Text(
                                   'Articolo',
                                   style: TextStyle(
-                                    fontSize: 15, // Increased
+                                    fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                     color: !isTotalDiscount
                                         ? Colors.white
@@ -311,17 +311,16 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                     ),
 
                     AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      height: !isTotalDiscount ? 60 : 0,
-                      margin:
-                          EdgeInsets.only(top: !isTotalDiscount ? 16 : 0),
+                      duration: const Duration(milliseconds: 200),
+                      height: !isTotalDiscount ? 44 : 0,
+                      margin: EdgeInsets.only(top: !isTotalDiscount ? 10 : 0),
                       child: Visibility(
                         visible: !isTotalDiscount,
                         child: Container(
-                          height: 52,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          height: 40, // Reduced
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: Colors.grey.shade300),
                             color: Colors.white,
                           ),
@@ -334,10 +333,11 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                                   child: Text(
                                     item.product.name,
                                     style: const TextStyle(
-                                      fontSize: 14,
+                                      fontSize: 12,
                                       fontWeight: FontWeight.w500,
                                     ),
                                     overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
                                   ),
                                 );
                               }).toList(),
@@ -348,30 +348,31 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                                 'Seleziona articolo',
                                 style: TextStyle(
                                   color: Colors.grey.shade500,
-                                  fontSize: 14,
+                                  fontSize: 12,
                                 ),
                               ),
                               style: const TextStyle(color: Colors.black87),
                               icon: Icon(Icons.arrow_drop_down,
-                                  size: 24, color: Colors.grey.shade600),
-                              iconSize: 28,
+                                  size: 18, color: Colors.grey.shade600),
+                              iconSize: 20,
                               dropdownColor: Colors.white,
+                              isDense: true,
                             ),
                           ),
                         ),
                       ),
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
                     // Current Discount Display
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
-                          vertical: 14, horizontal: 18),
+                          vertical: 12, horizontal: 16),
                       decoration: BoxDecoration(
                         color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: Colors.grey.shade200),
                       ),
                       child: Column(
@@ -379,17 +380,17 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                           Text(
                             'SCONTO APPLICATO',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 10,
                               fontWeight: FontWeight.w600,
                               color: Colors.grey.shade600,
                               letterSpacing: 0.5,
                             ),
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 4),
                           Text(
                             discountValue.isEmpty ? '0%' : '$discountValue%',
                             style: const TextStyle(
-                              fontSize: 36, // Increased
+                              fontSize: 28, // Reduced
                               fontWeight: FontWeight.w700,
                               color: Color(0xFF4361EE),
                               height: 1.2,
@@ -397,13 +398,13 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                           ),
                           if (discountValue.isNotEmpty)
                             Padding(
-                              padding: const EdgeInsets.only(top: 4),
+                              padding: const EdgeInsets.only(top: 2),
                               child: Text(
                                 isTotalDiscount
                                     ? 'Sconto totale'
                                     : 'Sconto articolo',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 10,
                                   color: Colors.grey.shade600,
                                 ),
                               ),
@@ -412,7 +413,7 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                       ),
                     ),
 
-                    const SizedBox(height: 15),
+                    const SizedBox(height: 12),
 
                     // Keypad Grid
                     GridView.builder(
@@ -421,9 +422,9 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 3,
-                        childAspectRatio: 1.8, // Changed from 1.8
-                        crossAxisSpacing: 8,
-                        mainAxisSpacing: 8,
+                        childAspectRatio: 1.6, // Adjusted for better fit
+                        crossAxisSpacing: 8, // Reduced
+                        mainAxisSpacing: 8, // Reduced
                       ),
                       itemCount: 12,
                       itemBuilder: (context, index) {
@@ -431,7 +432,7 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                         IconData? icon;
                         Color bgColor = Colors.white;
                         Color textColor = Colors.grey.shade900;
-                        double fontSize = 20;
+                        double fontSize = 16; // Reduced
 
                         if (index < 9) {
                           label = '${index + 1}';
@@ -439,7 +440,7 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                           label = 'C';
                           bgColor = Colors.red.shade50;
                           textColor = Colors.red;
-                          fontSize = 18;
+                          fontSize = 14;
                         } else if (index == 10) {
                           label = '0';
                         } else if (index == 11) {
@@ -450,9 +451,9 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
 
                         return Material(
                           color: bgColor,
-                          borderRadius: BorderRadius.circular(12),
-                          elevation: 1,
-                          shadowColor: Colors.black.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(8),
+                          elevation: 0.5,
+                          shadowColor: Colors.black.withOpacity(0.03),
                           child: InkWell(
                             onTap: () {
                               setModalState(() {
@@ -472,20 +473,20 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                                 }
                               });
                             },
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(8),
                             child: Container(
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
                                   color: Colors.grey.shade200,
-                                  width: 1.5,
+                                  width: 0.8,
                                 ),
                               ),
                               child: Center(
                                 child: icon != null
                                     ? Icon(icon,
-                                        size: 24,
-                                        color: textColor) // Increased size
+                                        size: 18, // Reduced
+                                        color: textColor)
                                     : Text(
                                         label,
                                         style: TextStyle(
@@ -501,40 +502,41 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                       },
                     ),
 
-                    const SizedBox(height: 25),
+                    const SizedBox(height: 16),
 
-                    // Buttons Section
+                    // Buttons Section - Now visible and properly sized
                     Row(
                       children: [
                         Expanded(
                           child: SizedBox(
-                            height: 52, // Increased
+                            height: 40, // Compact size
                             child: OutlinedButton(
                               onPressed: () => Navigator.pop(context),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.grey.shade700,
                                 backgroundColor: Colors.white,
                                 side: BorderSide(
-                                    color: Colors.grey.shade300, width: 1.5),
+                                    color: Colors.grey.shade300, width: 1),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
-                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                visualDensity: VisualDensity.compact,
                               ),
                               child: const Text(
                                 'Annulla',
                                 style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: SizedBox(
-                            height: 52, // Increased
+                            height: 40, // Compact size
                             child: ElevatedButton(
                               onPressed: () {
                                 double d = double.tryParse(discountValue) ?? 0;
@@ -551,17 +553,17 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                                 backgroundColor: const Color(0xFF4361EE),
                                 foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
                                 elevation: 0,
                                 shadowColor: Colors.transparent,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                visualDensity: VisualDensity.compact,
                               ),
                               child: const Text(
-                                'Applica Sconto',
+                                'Applica',
                                 style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
