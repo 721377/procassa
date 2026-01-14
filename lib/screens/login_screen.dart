@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:procassa/screens/pos_screen.dart';
+import 'package:procassa/screens/registration_screen.dart';
+import 'package:procassa/services/database_service.dart';
+import 'package:procassa/services/subscription_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -39,6 +43,22 @@ class _LoginScreenState extends State<LoginScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    SubscriptionService().checkSubscription(context,force:true);
+    _loadLastUser();
+  }
+
+  Future<void> _loadLastUser() async {
+    final lastUser = await DatabaseService().getLastRegisteredUser();
+    if (lastUser != null && mounted) {
+      setState(() {
+        _usernameController.text = lastUser['username'] ?? '';
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
@@ -46,37 +66,50 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleLogin() async {
-    if (_formKey.currentState!.validate() && _selectedStore != null) {
+    if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-      await Future.delayed(const Duration(seconds: 2));
+      
+      final username = _usernameController.text;
+      final password = _passwordController.text;
+
+      // Local authentication only
+      final db = DatabaseService();
+      final localUsers = await db.getLocalUsers();
+      final localUser = localUsers.firstWhere(
+        (u) => u['username'] == username && u['password'] == password,
+        orElse: () => {},
+      );
+
       setState(() => _isLoading = false);
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Accesso effettuato con successo!'),
-          backgroundColor: successColor,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+      if (localUser.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Accesso effettuato con successo!'),
+            backgroundColor: successColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
-        ),
-      );
-      
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const PosScreen()),
-      );
-    } else if (_selectedStore == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Seleziona un punto vendita'),
-          backgroundColor: dangerColor,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+        );
+        
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const PosScreen()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Credenziali non valide'),
+            backgroundColor: dangerColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
   }
 
@@ -597,81 +630,85 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                
-                // Content
-                Container(
-                  padding: const EdgeInsets.all(40),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      // Brand
-                      Column(
+                Positioned.fill(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Container(
+                      padding: const EdgeInsets.all(40),
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          Text(
-                            'ProCassa',
-                            style: GoogleFonts.poppins(
-                              fontSize: 44,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                              height: 1.1,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Sistema POS Avanzato',
-                            style: GoogleFonts.inter(
-                              fontSize: 17,
-                              color: Colors.white.withOpacity(0.9),
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                        ],
-                      ),
-                      
-                      const SizedBox(height: 40),
-                      
-                      // Feature Highlights
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Vantaggi:',
-                            style: GoogleFonts.inter(
-                              fontSize: 15,
-                              color: Colors.white.withOpacity(0.8),
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 1.5,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          
-                          Wrap(
-                            spacing: 12,
-                            runSpacing: 12,
+                          const SizedBox(height: 100), // Push content down if needed
+                          // Brand
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildLargeFeatureBadge(
-                                icon: Icons.bolt_rounded,
-                                title: 'Performance',
+                              Text(
+                                'ProCassa',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 44,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                  height: 1.1,
+                                ),
                               ),
-                              _buildLargeFeatureBadge(
-                                icon: Icons.security_rounded,
-                                title: 'Sicurezza',
+                              const SizedBox(height: 8),
+                              Text(
+                                'Sistema POS Avanzato',
+                                style: GoogleFonts.inter(
+                                  fontSize: 17,
+                                  color: Colors.white.withOpacity(0.9),
+                                  fontWeight: FontWeight.w400,
+                                ),
                               ),
-                              _buildLargeFeatureBadge(
-                                icon: Icons.analytics_rounded,
-                                title: 'Analisi',
+                            ],
+                          ),
+                          
+                          const SizedBox(height: 40),
+                          
+                          // Feature Highlights
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Vantaggi:',
+                                style: GoogleFonts.inter(
+                                  fontSize: 15,
+                                  color: Colors.white.withOpacity(0.8),
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 1.5,
+                                ),
                               ),
-                              _buildLargeFeatureBadge(
-                                icon: Icons.support_agent_rounded,
-                                title: 'Supporto',
+                              const SizedBox(height: 20),
+                              
+                              Wrap(
+                                spacing: 12,
+                                runSpacing: 12,
+                                children: [
+                                  _buildLargeFeatureBadge(
+                                    icon: Icons.bolt_rounded,
+                                    title: 'Performance',
+                                  ),
+                                  _buildLargeFeatureBadge(
+                                    icon: Icons.security_rounded,
+                                    title: 'Sicurezza',
+                                  ),
+                                  _buildLargeFeatureBadge(
+                                    icon: Icons.analytics_rounded,
+                                    title: 'Analisi',
+                                  ),
+                                  _buildLargeFeatureBadge(
+                                    icon: Icons.support_agent_rounded,
+                                    title: 'Supporto',
+                                  ),
+                                ],
                               ),
                             ],
                           ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ],
@@ -777,86 +814,89 @@ class _LoginScreenState extends State<LoginScreen> {
               
               // Content Overlay
               Positioned.fill(
-                child: Container(
-                  padding: const EdgeInsets.all(60),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Brand Section
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'ProCassa',
-                            style: GoogleFonts.poppins(
-                              fontSize: 52,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                              height: 1.1,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            'Sistema POS Avanzato',
-                            style: GoogleFonts.inter(
-                              fontSize: 20,
-                              color: Colors.white.withOpacity(0.9),
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                        ],
-                      ),
-                      
-                      const Spacer(),
-                      
-                      // Feature Highlights
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Perché scegliere ProCassa:',
-                            style: GoogleFonts.inter(
-                              fontSize: 16,
-                              color: Colors.white.withOpacity(0.8),
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 1.5,
-                            ),
-                          ),
-                          const SizedBox(height: 30),
-                          
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildDesktopFeatureCard(
-                                  icon: Icons.bolt_rounded,
-                                  title: 'Performance',
-                                  description: 'Velocità e affidabilità garantite',
-                                  iconColor: const Color(0xFF06D6A0),
-                                ),
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Container(
+                    padding: const EdgeInsets.all(60),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Brand Section
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'ProCassa',
+                              style: GoogleFonts.poppins(
+                                fontSize: 52,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                height: 1.1,
                               ),
-                              const SizedBox(width: 20),
-                              Expanded(
-                                child: _buildDesktopFeatureCard(
-                                  icon: Icons.security_rounded,
-                                  title: 'Sicurezza',
-                                  description: 'Dati protetti e crittografati',
-                                  iconColor: const Color(0xFF4361EE),
-                                ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Sistema POS Avanzato',
+                              style: GoogleFonts.inter(
+                                fontSize: 20,
+                                color: Colors.white.withOpacity(0.9),
+                                fontWeight: FontWeight.w400,
                               ),
-                              const SizedBox(width: 20),
-                              Expanded(
-                                child: _buildDesktopFeatureCard(
-                                  icon: Icons.analytics_rounded,
-                                  title: 'Analisi',
-                                  description: 'Report dettagliati in tempo reale',
-                                  iconColor: const Color(0xFFEF476F),
-                                ),
+                            ),
+                          ],
+                        ),
+                        
+                        const SizedBox(height: 150), 
+                        
+                        // Feature Highlights
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Perché scegliere ProCassa:',
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                color: Colors.white.withOpacity(0.8),
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 1.5,
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
+                            ),
+                            const SizedBox(height: 30),
+                            
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildDesktopFeatureCard(
+                                    icon: Icons.bolt_rounded,
+                                    title: 'Performance',
+                                    description: 'Velocità e affidabilità garantite',
+                                    iconColor: const Color(0xFF06D6A0),
+                                  ),
+                                ),
+                                const SizedBox(width: 20),
+                                Expanded(
+                                  child: _buildDesktopFeatureCard(
+                                    icon: Icons.security_rounded,
+                                    title: 'Sicurezza',
+                                    description: 'Dati protetti e crittografati',
+                                    iconColor: const Color(0xFF4361EE),
+                                  ),
+                                ),
+                                const SizedBox(width: 20),
+                                Expanded(
+                                  child: _buildDesktopFeatureCard(
+                                    icon: Icons.analytics_rounded,
+                                    title: 'Analisi',
+                                    description: 'Report dettagliati in tempo reale',
+                                    iconColor: const Color(0xFFEF476F),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -1040,6 +1080,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 value!.isEmpty ? 'Inserisci password' : null,
           ),
           
+          /*
           SizedBox(height: isExtraSmall ? 12 : 16),
           
           // Store Dropdown
@@ -1087,6 +1128,7 @@ class _LoginScreenState extends State<LoginScreen> {
               icon: Icon(Icons.arrow_drop_down, color: textTertiary),
             ),
           ),
+          */
           
           SizedBox(height: isExtraSmall ? 20 : 24),
           
@@ -1138,6 +1180,32 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: GoogleFonts.inter(
                   fontSize: isExtraSmall ? 13 : 14,
                   fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+          
+          const SizedBox(height: 8),
+          
+          // Register Link
+          Center(
+            child: TextButton(
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const RegistrationScreen()),
+                );
+                // Reload username after registration
+                _loadLastUser();
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: primaryColor,
+              ),
+              child: Text(
+                'Non hai un account? Registrati',
+                style: GoogleFonts.inter(
+                  fontSize: isExtraSmall ? 13 : 14,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),

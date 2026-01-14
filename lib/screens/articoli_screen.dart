@@ -267,56 +267,56 @@ class _ArticoliScreenState extends State<ArticoliScreen> {
             const SizedBox(height: 16),
 
             // Codice IVA
-            Text(
-              'Codice IVA (Opzionale)',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey[700],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[300]!),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String?>(
-                  isExpanded: true,
-                  value: _selectedIvaCode,
-                  icon: const Icon(Icons.arrow_drop_down_rounded),
-                  borderRadius: BorderRadius.circular(12),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  hint: const Text(
-                    'Seleziona codice IVA',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  onChanged: (value) {
-                    setDialogState(() {
-                      _selectedIvaCode = value;
-                      if (value != null && SimpleIvaManager.isValid(value)) {
-                        _selectedIvaValue = SimpleIvaManager.getRate(value);
-                      }
-                    });
-                  },
-                  items: [
-                    const DropdownMenuItem<String?>(
-                      value: null,
-                      child: Text('Nessuno'),
-                    ),
-                    ...SimpleIvaManager.getAllCodes().map((code) {
-                      final description = SimpleIvaManager.getDescription(code);
-                      return DropdownMenuItem<String?>(
-                        value: code,
-                        child: Text('$code - $description'),
-                      );
-                    }).toList(),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
+            // Text(
+            //   'Codice IVA (Opzionale)',
+            //   style: TextStyle(
+            //     fontSize: 14,
+            //     fontWeight: FontWeight.w500,
+            //     color: Colors.grey[700],
+            //   ),
+            // ),
+            // const SizedBox(height: 8),
+            // Container(
+            //   decoration: BoxDecoration(
+            //     borderRadius: BorderRadius.circular(12),
+            //     border: Border.all(color: Colors.grey[300]!),
+            //   ),
+            //   child: DropdownButtonHideUnderline(
+            //     child: DropdownButton<String?>(
+            //       isExpanded: true,
+            //       value: _selectedIvaCode,
+            //       icon: const Icon(Icons.arrow_drop_down_rounded),
+            //       borderRadius: BorderRadius.circular(12),
+            //       padding: const EdgeInsets.symmetric(horizontal: 16),
+            //       hint: const Text(
+            //         'Seleziona codice IVA',
+            //         style: TextStyle(color: Colors.grey),
+            //       ),
+            //       onChanged: (value) {
+            //         setDialogState(() {
+            //           _selectedIvaCode = value;
+            //           if (value != null && SimpleIvaManager.isValid(value)) {
+            //             _selectedIvaValue = SimpleIvaManager.getRate(value);
+            //           }
+            //         });
+            //       },
+            //       items: [
+            //         const DropdownMenuItem<String?>(
+            //           value: null,
+            //           child: Text('Nessuno'),
+            //         ),
+            //         ...SimpleIvaManager.getAllCodes().map((code) {
+            //           final description = SimpleIvaManager.getDescription(code);
+            //           return DropdownMenuItem<String?>(
+            //             value: code,
+            //             child: Text('$code - $description'),
+            //           );
+            //         }).toList(),
+            //       ],
+            //     ),
+            //   ),
+            // ),
+            // const SizedBox(height: 16),
             
             // Categoria
             Text(

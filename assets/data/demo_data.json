@@ -1,0 +1,22 @@
+{
+  "categories": [
+    { "id": 1, "descrizione": "Caffetteria" },
+    { "id": 2, "descrizione": "Bevande" },
+    { "id": 3, "descrizione": "Snack e Panini" },
+    { "id": 4, "descrizione": "Alcolici" }
+  ],
+  "iva": [
+    { "id": 1, "nome": "IVA 10%", "valore": 10.0, "ivaCode": "10", "department": 2 },
+    { "id": 2, "nome": "IVA 22%", "valore": 22.0, "ivaCode": "22", "department": 1 }
+  ],
+  "articoli": [
+    { "id": 1, "descrizione": "Espresso", "prezzo": 1.20, "iva": 10.0, "codice": "001", "categoria_id": 1 },
+    { "id": 2, "descrizione": "Cappuccino", "prezzo": 1.80, "iva": 10.0, "codice": "002", "categoria_id": 1 },
+    { "id": 3, "descrizione": "Acqua Naturale 50cl", "prezzo": 1.00, "iva": 22.0, "codice": "003", "categoria_id": 2 },
+    { "id": 4, "descrizione": "Coca Cola 33cl", "prezzo": 2.50, "iva": 22.0, "codice": "004", "categoria_id": 2 },
+    { "id": 5, "descrizione": "Cornetto", "prezzo": 1.30, "iva": 10.0, "codice": "005", "categoria_id": 3 },
+    { "id": 6, "descrizione": "Tramezzino", "prezzo": 3.50, "iva": 10.0, "codice": "006", "categoria_id": 3 },
+    { "id": 7, "descrizione": "Birra alla spina 0.4L", "prezzo": 5.00, "iva": 22.0, "codice": "007", "categoria_id": 4 },
+    { "id": 8, "descrizione": "Spritz", "prezzo": 6.00, "iva": 22.0, "codice": "008", "categoria_id": 4 }
+  ]
+}

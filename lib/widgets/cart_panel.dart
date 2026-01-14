@@ -827,7 +827,7 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                         decoration: BoxDecoration(
-                          color: const Color.fromARGB(139, 67, 98, 238),
+                          color: const Color.fromARGB(206, 233, 245, 255),
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
@@ -839,7 +839,7 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                         ),
                         child: const Icon(
                           Icons.keyboard_arrow_up_rounded,
-                          color: Colors.white,
+                          color: Color.fromARGB(255, 0, 0, 0),
                           size: 22,
                         ),
                       ),
@@ -866,7 +866,7 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                         decoration: BoxDecoration(
-                          color: const Color.fromARGB(139, 67, 98, 238),
+                          color:const Color.fromARGB(206, 233, 245, 255),
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
@@ -878,7 +878,7 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
                         ),
                         child: const Icon(
                           Icons.keyboard_arrow_down_rounded,
-                          color: Colors.white,
+                          color: Color.fromARGB(255, 0, 0, 0),
                           size: 22,
                         ),
                       ),
@@ -1042,7 +1042,6 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
     final total = widget.totalAmount;
 
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: surfaceColor,
         border: const Border(top: BorderSide(color: borderColor, width: 1)),
@@ -1060,192 +1059,202 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
           ),
         ],
       ),
-      child: Column(
-        children: [
-          // Total Display
-           if (_selectedPaymentMethod != null)
-            Column(
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: successColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: successColor.withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
+      child: SafeArea(
+        top: false,
+        bottom: true,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Total Display
+              if (_selectedPaymentMethod != null)
+                Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: successColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: successColor.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Icon(
-                            Icons.check_circle,
-                            color: successColor,
-                            size: 18,
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.check_circle,
+                                color: successColor,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Metodo: ${_getDisplayPaymentMethod(_selectedPaymentMethod!)}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: successColor,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Metodo: ${_getDisplayPaymentMethod(_selectedPaymentMethod!)}',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: successColor,
+                          GestureDetector(
+                            onTap: () => _showPaymentMethodModal(context),
+                            child: const Icon(
+                              Icons.edit_rounded,
+                              size: 20,
+                              color: primaryColor,
                             ),
                           ),
                         ],
                       ),
-                      GestureDetector(
-                        onTap: () => _showPaymentMethodModal(context),
-                        child: Icon(
-                          Icons.edit_rounded,
-                          size: 20,
-                          color: primaryColor,
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+                ),
+              GestureDetector(
+                onLongPress: () => _showDiscountModal(isTotal: true),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: backgroundColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: borderColor, width: 1),
+                  ),
+                  child: Column(
+                    children: [
+                      if (widget.totalDiscount > 0) ...[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Subtotale',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: textSecondary,
+                              ),
+                            ),
+                            Text(
+                              '€${(total / (1 - (widget.totalDiscount / 100))).toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Sconto (${widget.totalDiscount.toStringAsFixed(0)}%)',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: successColor,
+                              ),
+                            ),
+                            Text(
+                              '- €${((total / (1 - (widget.totalDiscount / 100))) - total).toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: successColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'TOTALE',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: textSecondary,
+                            ),
+                          ),
+                          Text(
+                            '€${total.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              color: primaryColor,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 14),
-              ],
-            ),
-          GestureDetector(
-            onLongPress: () => _showDiscountModal(isTotal: true),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: backgroundColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: borderColor, width: 1),
               ),
-              child: Column(
+              const SizedBox(height: 14),
+
+              Row(
                 children: [
-                  if (widget.totalDiscount > 0) ...[
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Subtotale',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: textSecondary,
+                  // Print Button
+                  if (widget.onPrint != null)
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: widget.onPrint,
+                        icon: const Icon(Icons.print_rounded, size: 18),
+                        label: const Text('Stampa'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: surfaceColor,
+                          foregroundColor: textPrimary,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side:
+                                const BorderSide(color: borderColor, width: 1.5),
                           ),
-                        ),
-                        Text(
-                          '€${(total / (1 - (widget.totalDiscount / 100))).toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Sconto (${widget.totalDiscount.toStringAsFixed(0)}%)',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: successColor,
-                          ),
-                        ),
-                        Text(
-                          '- €${((total / (1 - (widget.totalDiscount / 100))) - total).toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: successColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'TOTALE',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: textSecondary,
+                          elevation: 0,
                         ),
                       ),
-                      Text(
-                        '€${total.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          color: primaryColor,
-                        ),
+                    ),
+                  if (widget.onPrint != null) const SizedBox(width: 8),
+                  // Pagare Button
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _selectedPaymentMethod != null
+                          ? () => _processPayment(total)
+                          : () => _showPaymentMethodModal(context),
+                      icon: Icon(
+                        _selectedPaymentMethod != null
+                            ? Icons.check_circle
+                            : Icons.payment_rounded,
+                        size: 18,
                       ),
-                    ],
+                      label: Text(
+                        _selectedPaymentMethod != null ? 'Pagare' : 'Pagamento',
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _selectedPaymentMethod != null
+                            ? successColor
+                            : primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 2,
+                      ),
+                    ),
                   ),
                 ],
               ),
-            ),
-          ),
-            const SizedBox(height: 14),
-
-          Row(
-            children: [
-              // Print Button
-              if (widget.onPrint != null)
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: widget.onPrint,
-                    icon: const Icon(Icons.print_rounded, size: 18),
-                    label: const Text('Stampa'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: surfaceColor,
-                      foregroundColor: textPrimary,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        side: const BorderSide(color: borderColor, width: 1.5),
-                      ),
-                      elevation: 0,
-                    ),
-                  ),
-                ),
-              if (widget.onPrint != null) const SizedBox(width: 8),
-              // Pagare Button
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _selectedPaymentMethod != null
-                      ? () => _processPayment(total)
-                      : () => _showPaymentMethodModal(context),
-                  icon: Icon(
-                    _selectedPaymentMethod != null
-                        ? Icons.check_circle
-                        : Icons.payment_rounded,
-                    size: 18,
-                  ),
-                  label: Text(
-                    _selectedPaymentMethod != null ? 'Pagare' : 'Pagamento',
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _selectedPaymentMethod != null
-                        ? successColor
-                        : primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    elevation: 2,
-                  ),
-                ),
-              ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1339,119 +1348,123 @@ void _showDiscountModal({CartItem? preselectedItem, bool isTotal = false}) {
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Centered handle
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: borderColor.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Header with title and close button
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    'Metodo di Pagamento',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: textPrimary,
-                      letterSpacing: -0.2,
+        child: SafeArea(
+          top: false,
+          bottom: true,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Centered handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: borderColor.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: Icon(Icons.close_rounded,
-                        color: textPrimary.withOpacity(0.6)),
-                    iconSize: 24,
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // Responsive payment options grid
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final crossAxisCount = constraints.maxWidth > 400 ? 4 : 3;
-                  final childAspectRatio =
-                      constraints.maxWidth > 400 ? 0.95 : 0.9;
-
-                  return GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: crossAxisCount,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: childAspectRatio,
-                    padding: const EdgeInsets.only(bottom: 8),
-                    children: [
-                      _buildCompactPaymentOption(
-                        icon: Icons.credit_card_rounded,
-                        title: 'Carta',
-                        value: 'CARTA',
-                        color: primaryColor,
-                      ),
-                      _buildCompactPaymentOption(
-                        icon: Icons.money_rounded,
-                        title: 'Contanti',
-                        value: 'CONTANTE',
-                        color: successColor,
-                      ),
-                      _buildCompactPaymentOption(
-                        icon: Icons.receipt_long_rounded,
-                        title: 'Buono',
-                        value: 'TICKET',
-                        color: const Color(0xFFFFD166),
-                      ),
-                      _buildCompactPaymentOption(
-                        icon: Icons.phone_android_rounded,
-                        title: 'Satispay',
-                        value: 'SATISPAY',
-                        color: const Color(0xFF3A0CA3),
-                      ),
-                      _buildCompactPaymentOption(
-                        icon: Icons.account_balance_rounded,
-                        title: 'Bonifico',
-                        value: 'TRANSFER',
-                        color: const Color(0xFF4CC9F0),
-                      ),
-                      _buildCompactPaymentOption(
-                        icon: Icons.wallet_rounded,
-                        title: 'Mobile',
-                        value: 'MOBILE',
-                        color: const Color(0xFF7209B7),
-                      ),
-                    ],
-                  );
-                },
-              ),
-
-              // Optional: Add a hint for scroll if needed
-              if (MediaQuery.of(context).size.height < 500)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Icon(
-                    Icons.keyboard_arrow_up_rounded,
-                    color: borderColor.withOpacity(0.5),
-                    size: 20,
-                  ),
                 ),
-            ],
+                const SizedBox(height: 16),
+
+                // Header with title and close button
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Metodo di Pagamento',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: textPrimary,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(Icons.close_rounded,
+                          color: textPrimary.withOpacity(0.6)),
+                      iconSize: 24,
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Responsive payment options grid
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final crossAxisCount = constraints.maxWidth > 400 ? 4 : 3;
+                    final childAspectRatio =
+                        constraints.maxWidth > 400 ? 0.95 : 0.9;
+
+                    return GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: crossAxisCount,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      childAspectRatio: childAspectRatio,
+                      padding: const EdgeInsets.only(bottom: 8),
+                      children: [
+                        _buildCompactPaymentOption(
+                          icon: Icons.credit_card_rounded,
+                          title: 'Carta',
+                          value: 'CARTA',
+                          color: primaryColor,
+                        ),
+                        _buildCompactPaymentOption(
+                          icon: Icons.money_rounded,
+                          title: 'Contanti',
+                          value: 'CONTANTE',
+                          color: successColor,
+                        ),
+                        _buildCompactPaymentOption(
+                          icon: Icons.receipt_long_rounded,
+                          title: 'Buono',
+                          value: 'TICKET',
+                          color: const Color(0xFFFFD166),
+                        ),
+                        _buildCompactPaymentOption(
+                          icon: Icons.phone_android_rounded,
+                          title: 'Satispay',
+                          value: 'SATISPAY',
+                          color: const Color(0xFF3A0CA3),
+                        ),
+                        _buildCompactPaymentOption(
+                          icon: Icons.account_balance_rounded,
+                          title: 'Bonifico',
+                          value: 'TRANSFER',
+                          color: const Color(0xFF4CC9F0),
+                        ),
+                        _buildCompactPaymentOption(
+                          icon: Icons.wallet_rounded,
+                          title: 'Mobile',
+                          value: 'MOBILE',
+                          color: const Color(0xFF7209B7),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+
+                // Optional: Add a hint for scroll if needed
+                if (MediaQuery.of(context).size.height < 500)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Icon(
+                      Icons.keyboard_arrow_up_rounded,
+                      color: borderColor.withOpacity(0.5),
+                      size: 20,
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

@@ -45,6 +45,7 @@ class PaymentService {
       'serialNumber': null,
       'statusSegments': <String, String>{},
       'printerStatus': null,
+      'fiscalReceiptDate': null,
     };
 
     try {
@@ -55,6 +56,13 @@ class PaymentService {
       if (fiscalReceiptNumberElement != null) {
         result['fiscalReceiptNumber'] =
             fiscalReceiptNumberElement.innerText.trim();
+      }
+
+      final fiscalReceiptDateElement =
+          document.findAllElements('fiscalReceiptDate').firstOrNull;
+      if (fiscalReceiptDateElement != null) {
+        result['fiscalReceiptDate'] = fiscalReceiptDateElement.innerText.trim();
+        print('Fiscal Receipt Date: ${result['fiscalReceiptDate']}');
       }
 
       final receiptISODateTimeElement =

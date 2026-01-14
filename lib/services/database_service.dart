@@ -1,5 +1,7 @@
 import 'package:sqflite/sqflite.dart' hide Transaction;
 import 'package:path/path.dart';
+import 'dart:convert';
+import 'package:flutter/services.dart';
 import '../models.dart';
 
 class DatabaseService {
@@ -22,12 +24,50 @@ class DatabaseService {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'procassa.db');
 
-    return await openDatabase(
+    final db = await openDatabase(
       path,
-      version: 10,
+      version: 15,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
+
+    // Check if database is empty and populate with demo data if needed
+    await _checkAndPopulateDemoData(db);
+
+    return db;
+  }
+
+  Future<void> _checkAndPopulateDemoData(Database db) async {
+    final categoriesCount = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM categorie'));
+    if (categoriesCount == 0) {
+      try {
+        final String response = await rootBundle.loadString('assets/data/demo_data.json');
+        final data = json.decode(response);
+
+        // Insert IVA
+        if (data['iva'] != null) {
+          for (var item in data['iva']) {
+            await db.insert('iva', item);
+          }
+        }
+
+        // Insert Categories
+        if (data['categories'] != null) {
+          for (var item in data['categories']) {
+            await db.insert('categorie', item);
+          }
+        }
+
+        // Insert Articles
+        if (data['articoli'] != null) {
+          for (var item in data['articoli']) {
+            await db.insert('articoli', item);
+          }
+        }
+      } catch (e) {
+        print('Error loading demo data: $e');
+      }
+    }
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -92,6 +132,44 @@ class DatabaseService {
     if (oldVersion < 10) {
       await db.execute('ALTER TABLE transactions ADD COLUMN discount REAL DEFAULT 0');
       await db.execute('ALTER TABLE transaction_items ADD COLUMN discount REAL DEFAULT 0');
+    }
+    if (oldVersion < 11) {
+      await db.execute('''
+        CREATE TABLE agency_info (
+          id INTEGER PRIMARY KEY,
+          company_name TEXT,
+          email TEXT,
+          piva TEXT,
+          phone TEXT,
+          address TEXT,
+          city TEXT,
+          state TEXT,
+          postal_code TEXT,
+          contact_person TEXT,
+          subscription_end_date TEXT,
+          status TEXT
+        )
+      ''');
+    }
+    if (oldVersion < 12) {
+      await db.execute('ALTER TABLE agency_info ADD COLUMN last_verified_date TEXT');
+    }
+    if (oldVersion < 13) {
+      await db.execute('ALTER TABLE agency_info ADD COLUMN last_check_date TEXT');
+    }
+    if (oldVersion < 14) {
+      await db.execute('''
+        CREATE TABLE local_users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT NOT NULL,
+          password TEXT NOT NULL,
+          email TEXT,
+          agency_id INTEGER,
+          role INTEGER
+        )
+      ''');
+    } else if (oldVersion < 15) {
+      await db.execute('ALTER TABLE local_users ADD COLUMN role INTEGER');
     }
   }
 
@@ -179,6 +257,54 @@ class DatabaseService {
         FOREIGN KEY (transactionId) REFERENCES transactions(id)
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE agency_info (
+        id INTEGER PRIMARY KEY,
+        company_name TEXT,
+        email TEXT,
+        piva TEXT,
+        phone TEXT,
+        address TEXT,
+        city TEXT,
+        state TEXT,
+        postal_code TEXT,
+        contact_person TEXT,
+        subscription_end_date TEXT,
+        status TEXT,
+        last_verified_date TEXT,
+        last_check_date TEXT
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE local_users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL,
+        password TEXT NOT NULL,
+        email TEXT,
+        agency_id INTEGER,
+        role INTEGER
+      )
+    ''');
+  }
+
+  Future<int> saveLocalUser(Map<String, dynamic> user) async {
+    final db = await database;
+    // Keep it simple, just insert. Or you might want to replace if same username.
+    return await db.insert('local_users', user, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<Map<String, dynamic>>> getLocalUsers() async {
+    final db = await database;
+    return await db.query('local_users');
+  }
+
+  Future<Map<String, dynamic>?> getLastRegisteredUser() async {
+    final db = await database;
+    final results = await db.query('local_users', orderBy: 'id DESC', limit: 1);
+    if (results.isNotEmpty) return results.first;
+    return null;
   }
 
   Future<int> insertCategoria(Categoria categoria) async {
@@ -350,6 +476,21 @@ class DatabaseService {
       where: 'id = ?',
       whereArgs: [id],
     );
+  }
+
+  // --- Agency Info ---
+
+  Future<int> saveAgencyInfo(Map<String, dynamic> info) async {
+    final db = await database;
+    await db.delete('agency_info'); // Keep only one record
+    return await db.insert('agency_info', info);
+  }
+
+  Future<Map<String, dynamic>?> getAgencyInfo() async {
+    final db = await database;
+    final maps = await db.query('agency_info', limit: 1);
+    if (maps.isEmpty) return null;
+    return maps[0];
   }
 
   Future<Stampante?> getEpsonReceiptPrinter() async {

@@ -11,6 +11,7 @@ import '../services/cart_functions.dart';
 import '../services/database_service.dart';
 import '../services/printing_service.dart';
 import '../services/payment_service.dart';
+import '../services/subscription_service.dart';
 import 'stampanti_screen.dart';
 import 'impostazioni_screen.dart';
 import 'anagrafica_screen.dart';
@@ -55,6 +56,7 @@ class _PosScreenState extends State<PosScreen> {
     // Default to show cart on larger screens
     _showCart = MediaQueryData.fromWindow(ui.window).size.width >= 1024;
     _loadData();
+    SubscriptionService().checkSubscription(context);
   }
 
   @override
@@ -234,6 +236,271 @@ class _PosScreenState extends State<PosScreen> {
       _clearKeypad();
     }
   }
+
+  void _showFiscalPrinterModal() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.print_rounded, color: Color(0xFF2D6FF1)),
+                const SizedBox(width: 12),
+                Text(
+                  'Stampante Fiscale',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey[900],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _buildFiscalOption(
+              icon: Icons.summarize_outlined,
+              title: 'Chiusura Fiscale',
+              subtitle: 'Esegue la chiusura  giornaliera',
+              onTap: () => _confirmAndRunFiscalOperation(
+                context,
+                'Chiusura Fiscale',
+                'Sei sicuro di voler eseguire la chiusura fiscale giornaliera?',
+                () => _runFiscalOperation(_printingService.printchiusuraEpson, 'Chiusura Fiscale'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildFiscalOption(
+              icon: Icons.description_outlined,
+              title: 'Chiusura con Report',
+              subtitle: 'Chiusura con Rapporto Finanziato',
+              onTap: () => _confirmAndRunFiscalOperation(
+                context,
+                'Chiusura con Report',
+                'Sei sicuro di voler eseguire la chiusura con report dettagliato?',
+                () => _runFiscalOperation(_printingService.printchiusuraReportEpson, 'Chiusura con Report'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildFiscalOption(
+              icon: Icons.analytics_outlined,
+              title: 'Lettura Fiscale',
+              subtitle: 'Esegue la lettura (senza chiusura)',
+              onTap: () {
+                Navigator.pop(context);
+                _runFiscalOperation(_printingService.printaReportEpson, 'Lettura Fiscale');
+              },
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFiscalOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey[200]!),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2D6FF1).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: const Color(0xFF2D6FF1), size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: Colors.grey[400]),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmAndRunFiscalOperation(
+      BuildContext context, String title, String message, VoidCallback onConfirm) {
+    Navigator.pop(context); // Close the bottom sheet
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annulla', style: TextStyle(color: Color(0xFF6B7280))),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onConfirm();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2D6FF1),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Conferma'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _runFiscalOperation(
+      Future<Map<String, dynamic>?> Function() operation, String label) async {
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: Color(0xFF2D6FF1)),
+      ),
+    );
+
+    try {
+      final response = await operation();
+      if (mounted) Navigator.pop(context); // Close loading
+
+      if (response != null && response['success'] == true) {
+        if (mounted) _showZReportResult(response, label);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Errore durante: $label'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Close loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+ void _showZReportResult(Map<String, dynamic> data, String title) {
+  showDialog(
+    context: context,
+    builder: (context) => Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      elevation: 0,
+      backgroundColor: Colors.white,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+        constraints: const BoxConstraints(maxWidth: 340),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF4361EE).withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_circle_rounded,
+                color: Color(0xFF4361EE),
+                size: 48,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF666666),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '€ ${data['dailyAmount'] ?? '0,00'}',
+              style: const TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF1A1A1A),
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4361EE),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'Chiudi',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
 
   Future<void> _handlePrint() async {
     if (_cartItems.isEmpty) {
@@ -713,6 +980,13 @@ class _PosScreenState extends State<PosScreen> {
             transactionId,
             fiscalData,
           );
+          
+          // Update last verified date from fiscal date
+          if (fiscalData['fiscalReceiptDate'] != null) {
+            await SubscriptionService().updateLastVerifiedDateFromFiscal(
+              fiscalData['fiscalReceiptDate'].toString(),
+            );
+          }
         }
 
         _clearCart();
@@ -1092,12 +1366,10 @@ class _PosScreenState extends State<PosScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: _isSmallScreen
-            ? IconButton(
-                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-                icon: const Icon(Icons.menu, color: Color(0xFF6B7280)),
-              )
-            : null,
+        leading: IconButton(
+          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+          icon: const Icon(Icons.menu_rounded, color: Color(0xFF1A1A1A), size: 26),
+        ),
         title: _isSmallScreen
             ? SizedBox(
                 height: 40,
@@ -1252,106 +1524,129 @@ class _PosScreenState extends State<PosScreen> {
 
   Widget _buildDrawer() {
     return Drawer(
-      child: Column(
-        children: [
-          const DrawerHeader(
-            decoration: BoxDecoration(
-              color: Color(0xFF2D6FF1),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Text(
-                  'POS Menu',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+      backgroundColor: Colors.white,
+      elevation: 0,
+      child: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.only(left: 8, top: 8, bottom: 8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.asset(
+                        'images/logoapp.png',
+                        width: 80,
+                        height: 80,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
                   ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Gestione e Impostazioni',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
+                  // const SizedBox(width: 4),
+                  const Text(
+                    'Procassa',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1A1A1A),
+                      letterSpacing: -0.5,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-
-          // Menu Items
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                _buildDrawerItem(
-                  icon: Icons.list_alt_outlined,
-                  text: 'Anagrafica Articoli e Categorie',
-                  selected: _selectedMenu == 'articoli',
-                  onTap: () {
-                    Navigator.pop(context);
-                    _navigateToAnagrafica();
-                  },
-                ),
-                _buildDrawerItem(
-                  icon: Icons.print_outlined,
-                  text: 'Configurazione Stampante',
-                  selected: _selectedMenu == 'stampante',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const StampantiScreen()),
-                    );
-                  },
-                ),
-                _buildDrawerItem(
-                  icon: Icons.swap_horiz,
-                  text: 'Transazioni',
-                  selected: _selectedMenu == 'Transazioni',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const TransazioniScreen()),
-                    );
-                  },
-                ),
-                _buildDrawerItem(
-                  icon: Icons.bar_chart_outlined,
-                  text: 'Statistiche',
-                  selected: _selectedMenu == 'statistiche',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const StatisticheScreen()),
-                    );
-                  },
-                ),
-                _buildDrawerItem(
-                  icon: Icons.settings_outlined,
-                  text: 'Impostazioni',
-                  selected: _selectedMenu == 'impostazioni',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const ImpostazioniScreen()),
-                    );
-                  },
-                ),
-              ],
+            const Divider(indent: 24, endIndent: 24, height: 1),
+            const SizedBox(height: 16),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  _buildDrawerItem(
+                    icon: Icons.grid_view_rounded,
+                    text: 'POS',
+                    selected: _selectedMenu == 'pos',
+                    onTap: () => Navigator.pop(context),
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.inventory_2_outlined,
+                    text: 'Anagrafica',
+                    selected: _selectedMenu == 'articoli',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _navigateToAnagrafica();
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.receipt_long_outlined,
+                    text: 'Transazioni',
+                    selected: _selectedMenu == 'Transazioni',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const TransazioniScreen()),
+                      );
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.print_outlined,
+                    text: 'Stampanti',
+                    selected: _selectedMenu == 'stampante',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const StampantiScreen()),
+                      );
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.point_of_sale_rounded,
+                    text: 'Stampante Fiscale',
+                    selected: false,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showFiscalPrinterModal();
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.bar_chart_rounded,
+                    text: 'Statistiche',
+                    selected: _selectedMenu == 'statistiche',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const StatisticheScreen()),
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+            const Divider(indent: 24, endIndent: 24),
+            _buildDrawerItem(
+              icon: Icons.settings_outlined,
+              text: 'Impostazioni',
+              selected: _selectedMenu == 'impostazioni',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const ImpostazioniScreen()),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }
@@ -1362,22 +1657,28 @@ class _PosScreenState extends State<PosScreen> {
     required bool selected,
     required VoidCallback onTap,
   }) {
-    return ListTile(
-      leading: Icon(
-        icon,
-        color: selected ? const Color(0xFF2D6FF1) : const Color(0xFF6B7280),
-      ),
-      title: Text(
-        text,
-        style: TextStyle(
-          color: selected ? const Color(0xFF111827) : const Color(0xFF6B7280),
-          fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-          fontSize: 14,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      child: ListTile(
+        onTap: onTap,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        selected: selected,
+        selectedTileColor: const Color(0xFF2D6FF1).withOpacity(0.08),
+        leading: Icon(
+          icon,
+          color: selected ? const Color(0xFF2D6FF1) : const Color(0xFF6B7280),
+          size: 22,
         ),
+        title: Text(
+          text,
+          style: TextStyle(
+            color: selected ? const Color(0xFF2D6FF1) : const Color(0xFF4B5563),
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+            fontSize: 14,
+          ),
+        ),
+        dense: true,
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-      selected: selected,
-      onTap: onTap,
     );
   }
 
@@ -1491,9 +1792,13 @@ class _PosScreenState extends State<PosScreen> {
       ],
     );
   }
+  //to check
 
   Widget _buildMobileKeypadPanel() {
-    return Container(
+  return  SafeArea(
+  bottom: true,
+  child: Scaffold(
+    body: Container(
       decoration: const BoxDecoration(
         color: Colors.white,
       ),
@@ -1515,7 +1820,9 @@ class _PosScreenState extends State<PosScreen> {
           ),
         ],
       ),
-    );
+    ),
+  ),
+  );
   }
 
 

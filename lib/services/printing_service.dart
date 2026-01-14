@@ -882,6 +882,129 @@ Future<void> _printCommandContent(
   }
 
   // ============================================================================
+  // EPSON Z REPORT (CHIUSURA)
+  // ============================================================================
+ 
+ //chiusura fiscale con report 
+  Future<Map<String, dynamic>?> printchiusuraReportEpson() async {
+    try {
+      final printer = await _getEpsonReceiptPrinter();
+      if (printer == null) {
+        log('Epson receipt printer not found for Z Report');
+        return null;
+      }
+
+      const xmlData = '''<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+    <s:Body>
+        <printerFiscalReport>
+            <printXZReport operator="1" />
+        </printerFiscalReport>
+    </s:Body>
+</s:Envelope>''';
+
+      log('Sending Z Report (Chiusura) to Epson printer');
+      final responseBody = await _sendXmlToEpsonPrinter(printer, xmlData);
+      
+      if (responseBody != null) {
+        return _parseZReportResponse(responseBody);
+      }
+    } catch (e) {
+      log('Error in printZReportEpson: $e');
+    }
+    return null;
+  }
+
+  //chiusura fiscale 
+
+  Future<Map<String, dynamic>?> printchiusuraEpson() async {
+    try {
+      final printer = await _getEpsonReceiptPrinter();
+      if (printer == null) {
+        log('Epson receipt printer not found for Z Report');
+        return null;
+      }
+
+      const xmlData = '''<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+    <s:Body>
+        <printerFiscalReport>
+            <printZReport operator="1" />
+        </printerFiscalReport>
+    </s:Body>
+</s:Envelope>''';
+
+      log('Sending Z Report (Chiusura) to Epson printer');
+      final responseBody = await _sendXmlToEpsonPrinter(printer, xmlData);
+      
+      if (responseBody != null) {
+        return _parseZReportResponse(responseBody);
+      }
+    } catch (e) {
+      log('Error in printZReportEpson: $e');
+    }
+    return null;
+  }
+  //report fiscale
+  Future<Map<String, dynamic>?> printaReportEpson() async {
+    try {
+      final printer = await _getEpsonReceiptPrinter();
+      if (printer == null) {
+        log('Epson receipt printer not found for Z Report');
+        return null;
+      }
+
+      const xmlData = '''<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+    <s:Body>
+        <printerFiscalReport>
+            <printXReport operator="1" />
+        </printerFiscalReport>
+    </s:Body>
+</s:Envelope>''';
+
+      log('Sending Z Report (Chiusura) to Epson printer');
+      final responseBody = await _sendXmlToEpsonPrinter(printer, xmlData);
+      
+      if (responseBody != null) {
+        return _parseZReportResponse(responseBody);
+      }
+    } catch (e) {
+      log('Error in printZReportEpson: $e');
+    }
+    return null;
+  }
+
+  Map<String, dynamic>? _parseZReportResponse(String responseBody) {
+    try {
+      final document = XmlDocument.parse(responseBody);
+      final responseElement = document.findAllElements('response').firstOrNull;
+      
+      if (responseElement != null && responseElement.getAttribute('success') == 'true') {
+        final addInfo = responseElement.findElements('addInfo').firstOrNull;
+        if (addInfo != null) {
+          final data = {
+            'success': true,
+            'zRepNumber': addInfo.findElements('zRepNumber').firstOrNull?.innerText,
+            'dailyAmount': addInfo.findElements('dailyAmount').firstOrNull?.innerText,
+            'serialNumber': addInfo.findElements('serialNumber').firstOrNull?.innerText,
+            'printerStatus': addInfo.findElements('printerStatus').firstOrNull?.innerText,
+            'lastCommand': addInfo.findElements('lastCommand').firstOrNull?.innerText,
+          };
+          log('Parsed Z Report response: $data');
+          return data;
+        }
+        return {'success': true};
+      } else {
+        log('Z Report response unsuccessful or null');
+      }
+    } catch (e) {
+      log('Error parsing Z Report response: $e');
+    }
+    return null;
+  }
+
+  // ============================================================================
   // UTILITIES
   // ============================================================================
 

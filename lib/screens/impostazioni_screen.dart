@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:procassa/services/database_service.dart';
+import 'package:intl/intl.dart';
 
 class ImpostazioniScreen extends StatefulWidget {
   const ImpostazioniScreen({super.key});
@@ -14,6 +16,20 @@ class _ImpostazioniScreenState extends State<ImpostazioniScreen> {
   bool _salvataggioAutomatico = true;
   String _tema = 'chiaro';
   String _lingua = 'italiano';
+  Map<String, dynamic>? _agencyInfo;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAgencyInfo();
+  }
+
+  Future<void> _loadAgencyInfo() async {
+    final info = await DatabaseService().getAgencyInfo();
+    setState(() {
+      _agencyInfo = info;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -188,6 +204,27 @@ class _ImpostazioniScreenState extends State<ImpostazioniScreen> {
             icon: Icons.info_outline,
             title: 'Informazioni',
           ),
+          if (_agencyInfo != null && _agencyInfo!['status'] == 'active')
+            _buildSettingItem(
+              title: 'Stato Licenza',
+              subtitle: 'Modalità Demo (31 giorni di prova)',
+              trailing: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.orange.withOpacity(0.5)),
+                ),
+                child: const Text(
+                  'DEMO',
+                  style: TextStyle(
+                    color: Colors.orange,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
           _buildSettingItem(
             title: 'Versione',
             subtitle: '1.0.0',
@@ -396,6 +433,23 @@ class _ImpostazioniScreenState extends State<ImpostazioniScreen> {
                             color: Colors.grey.shade600,
                           ),
                         ),
+                        if (_agencyInfo != null && _agencyInfo!['status'] == 'active')
+                          Container(
+                            margin: const EdgeInsets.only(top: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'MODALITÀ DEMO (31 GG)',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -403,7 +457,9 @@ class _ImpostazioniScreenState extends State<ImpostazioniScreen> {
               ),
               const SizedBox(height: 24),
               Text(
-                'Un\'applicazione POS moderna e intuitiva per la gestione del punto vendita.',
+                _agencyInfo != null && _agencyInfo!['status'] == 'active'
+                    ? 'Questa applicazione è attualmente in modalità demo. Hai a disposizione 31 giorni di prova gratuita per esplorare tutte le funzionalità.'
+                    : 'Un\'applicazione POS moderna e intuitiva per la gestione del punto vendita.',
                 style: TextStyle(
                   fontSize: 15,
                   height: 1.5,
