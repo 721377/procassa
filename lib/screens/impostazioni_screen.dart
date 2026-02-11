@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:procassa/services/database_service.dart';
 import 'package:intl/intl.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class ImpostazioniScreen extends StatefulWidget {
   const ImpostazioniScreen({super.key});
@@ -16,12 +17,21 @@ class _ImpostazioniScreenState extends State<ImpostazioniScreen> {
   bool _salvataggioAutomatico = true;
   String _tema = 'chiaro';
   String _lingua = 'italiano';
+  String _appVersion = '';
   Map<String, dynamic>? _agencyInfo;
 
   @override
   void initState() {
     super.initState();
     _loadAgencyInfo();
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    final PackageInfo packageInfo = await PackageInfo.fromPlatform();
+    setState(() {
+      _appVersion = packageInfo.version;
+    });
   }
 
   Future<void> _loadAgencyInfo() async {
@@ -227,7 +237,7 @@ class _ImpostazioniScreenState extends State<ImpostazioniScreen> {
             ),
           _buildSettingItem(
             title: 'Versione',
-            subtitle: '1.0.0',
+            subtitle: _appVersion.isNotEmpty ? _appVersion : '...',
             trailing: null,
           ),
           _buildSettingItem(
@@ -427,7 +437,7 @@ class _ImpostazioniScreenState extends State<ImpostazioniScreen> {
                           ),
                         ),
                         Text(
-                          'Versione 1.0.0',
+                          'Versione ${_appVersion.isNotEmpty ? _appVersion : '1.0.0'}',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey.shade600,

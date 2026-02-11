@@ -1,6 +1,8 @@
 // screens/pos_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:ui' as ui;
+import 'dart:async';
 import 'package:procassa/screens/statistiche_screen.dart';
 import 'package:procassa/screens/transazioni_screen.dart';
 import 'package:procassa/widgets/numeric_keyboard.dart';
@@ -42,6 +44,8 @@ class _PosScreenState extends State<PosScreen> {
   bool _keypadXPressed = false;
   bool _showKeypad = false;
   bool _keypadModeActive = false;
+  bool _showAddCard = false;
+  Timer? _addCardTimer;
   final String _selectedMenu = 'pos';
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   String? _selectedPaymentMethod;
@@ -53,10 +57,33 @@ class _PosScreenState extends State<PosScreen> {
   @override
   void initState() {
     super.initState();
+    // Nascondi la barra di stato e la barra di navigazione
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     // Default to show cart on larger screens
     _showCart = MediaQueryData.fromWindow(ui.window).size.width >= 1024;
     _loadData();
     SubscriptionService().checkSubscription(context);
+  }
+
+  @override
+  void dispose() {
+    _addCardTimer?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _triggerShowAddCard() {
+    _addCardTimer?.cancel();
+    setState(() {
+      _showAddCard = true;
+    });
+    _addCardTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted) {
+        setState(() {
+          _showAddCard = false;
+        });
+      }
+    });
   }
 
   @override
@@ -99,24 +126,42 @@ class _PosScreenState extends State<PosScreen> {
     double baseTotal = _cartItems.fold(0, (sum, item) => sum + item.total);
     if (_totalDiscount > 0) {
       return baseTotal * (1 - (_totalDiscount / 100));
+    } else if (_totalDiscount < 0) {
+      return (baseTotal - _totalDiscount.abs()).clamp(0, double.infinity);
     }
     return baseTotal;
   }
+
   int get totalItems => _cartItems.fold(0, (sum, item) => sum + item.quantity);
 
-  void _applyDiscount(double discount, CartItem? item) {
-    setState(() {
-      if (item == null) {
-        _totalDiscount = discount;
+ void _applyDiscount(double discount, CartItem? item, bool isPercentage ) {
+  setState(() {
+      // ignore: avoid_print
+
+    if (item == null) {
+      // Apply to total
+      if (isPercentage) {
+        // Percentage discount (0-100)
+        _totalDiscount = discount.clamp(0, 100);
       } else {
-        final index = _cartItems.indexWhere((i) => i.product.id == item.product.id);
-        if (index != -1) {
-          _cartItems[index] = _cartItems[index].copyWith(discount: discount);
+        // Fixed amount discount - store as negative value to distinguish from percentage
+        _totalDiscount = -discount.abs(); // Negative value indicates fixed amount
+      }
+    } else {
+      // ignore: avoid_print
+      final index = _cartItems.indexWhere((i) => i.product.id == item.product.id);
+      if (index != -1) {
+        if (isPercentage) {
+          // Percentage discount (0-100)
+          _cartItems[index] = _cartItems[index].copyWith(discount: discount.clamp(0, 100));
+        } else {
+          // Fixed amount discount - store as negative value
+          _cartItems[index] = _cartItems[index].copyWith(discount: -discount.abs());
         }
       }
-    });
-  }
-
+    }
+  });
+}
   void _addToCart(Product product, {int quantity = 1}) {
     setState(() {
       CartFunctions.addToCart(_cartItems, product, quantity: quantity);
@@ -129,16 +174,16 @@ class _PosScreenState extends State<PosScreen> {
     });
   }
 
-  void _removeFromCart(String productId) {
+  void _removeFromCart(String productId, [double? price]) {
     setState(() {
-      CartFunctions.removeFromCart(_cartItems, productId);
+      CartFunctions.removeFromCart(_cartItems, productId, price);
       _clearKeypad();
     });
   }
 
-  void _updateQuantity(String productId, int newQuantity) {
+  void _updateQuantity(String productId, int newQuantity, [double? price]) {
     setState(() {
-      CartFunctions.updateQuantity(_cartItems, productId, newQuantity);
+      CartFunctions.updateQuantity(_cartItems, productId, newQuantity, price);
       _clearKeypad();
     });
   }
@@ -274,7 +319,8 @@ class _PosScreenState extends State<PosScreen> {
                 context,
                 'Chiusura Fiscale',
                 'Sei sicuro di voler eseguire la chiusura fiscale giornaliera?',
-                () => _runFiscalOperation(_printingService.printchiusuraEpson, 'Chiusura Fiscale'),
+                () => _runFiscalOperation(
+                    _printingService.printchiusuraEpson, 'Chiusura Fiscale'),
               ),
             ),
             const SizedBox(height: 12),
@@ -286,7 +332,9 @@ class _PosScreenState extends State<PosScreen> {
                 context,
                 'Chiusura con Report',
                 'Sei sicuro di voler eseguire la chiusura con report dettagliato?',
-                () => _runFiscalOperation(_printingService.printchiusuraReportEpson, 'Chiusura con Report'),
+                () => _runFiscalOperation(
+                    _printingService.printchiusuraReportEpson,
+                    'Chiusura con Report'),
               ),
             ),
             const SizedBox(height: 12),
@@ -296,7 +344,8 @@ class _PosScreenState extends State<PosScreen> {
               subtitle: 'Esegue la lettura (senza chiusura)',
               onTap: () {
                 Navigator.pop(context);
-                _runFiscalOperation(_printingService.printaReportEpson, 'Lettura Fiscale');
+                _runFiscalOperation(
+                    _printingService.printaReportEpson, 'Lettura Fiscale');
               },
             ),
             const SizedBox(height: 24),
@@ -360,8 +409,8 @@ class _PosScreenState extends State<PosScreen> {
     );
   }
 
-  void _confirmAndRunFiscalOperation(
-      BuildContext context, String title, String message, VoidCallback onConfirm) {
+  void _confirmAndRunFiscalOperation(BuildContext context, String title,
+      String message, VoidCallback onConfirm) {
     Navigator.pop(context); // Close the bottom sheet
     showDialog(
       context: context,
@@ -372,7 +421,8 @@ class _PosScreenState extends State<PosScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annulla', style: TextStyle(color: Color(0xFF6B7280))),
+            child: const Text('Annulla',
+                style: TextStyle(color: Color(0xFF6B7280))),
           ),
           ElevatedButton(
             onPressed: () {
@@ -382,7 +432,8 @@ class _PosScreenState extends State<PosScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF2D6FF1),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
             child: const Text('Conferma'),
           ),
@@ -428,79 +479,79 @@ class _PosScreenState extends State<PosScreen> {
     }
   }
 
- void _showZReportResult(Map<String, dynamic> data, String title) {
-  showDialog(
-    context: context,
-    builder: (context) => Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      elevation: 0,
-      backgroundColor: Colors.white,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
-        constraints: const BoxConstraints(maxWidth: 340),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF4361EE).withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.check_circle_rounded,
-                color: Color(0xFF4361EE),
-                size: 48,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF666666),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '€ ${data['dailyAmount'] ?? '0,00'}',
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF1A1A1A),
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4361EE),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
+  void _showZReportResult(Map<String, dynamic> data, String title) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        elevation: 0,
+        backgroundColor: Colors.white,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+          constraints: const BoxConstraints(maxWidth: 340),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4361EE).withOpacity(0.1),
+                  shape: BoxShape.circle,
                 ),
-                child: const Text(
-                  'Chiudi',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                child: const Icon(
+                  Icons.check_circle_rounded,
+                  color: Color(0xFF4361EE),
+                  size: 48,
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 24),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF666666),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '€ ${data['dailyAmount'] ?? '0,00'}',
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1A1A1A),
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4361EE),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Chiudi',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Future<void> _handlePrint() async {
     if (_cartItems.isEmpty) {
@@ -529,7 +580,7 @@ class _PosScreenState extends State<PosScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('No order printer configured'),
+              content: Text('Nessuna stampante dell\'ordine configurata'),
               backgroundColor: Color(0xFFDC2626),
             ),
           );
@@ -839,12 +890,18 @@ class _PosScreenState extends State<PosScreen> {
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
                 children: [
-                  _buildPaymentOption('CARTA', Icons.credit_card_rounded, const Color(0xFF4361EE)),
-                  _buildPaymentOption('CONTANTE', Icons.money_rounded, const Color(0xFF06D6A0)),
-                  _buildPaymentOption('TICKET', Icons.receipt_long_rounded, const Color(0xFFFFD166)),
-                  _buildPaymentOption('SATISPAY', Icons.phone_android_rounded, const Color(0xFF3A0CA3)),
-                  _buildPaymentOption('TRANSFER', Icons.account_balance_rounded, const Color(0xFF4CC9F0)),
-                  _buildPaymentOption('MOBILE', Icons.wallet_rounded, const Color(0xFF7209B7)),
+                  _buildPaymentOption('CARTA', Icons.credit_card_rounded,
+                      const Color(0xFF4361EE)),
+                  _buildPaymentOption(
+                      'CONTANTE', Icons.money_rounded, const Color(0xFF06D6A0)),
+                  _buildPaymentOption('TICKET', Icons.receipt_long_rounded,
+                      const Color(0xFFFFD166)),
+                  _buildPaymentOption('SATISPAY', Icons.phone_android_rounded,
+                      const Color(0xFF3A0CA3)),
+                  _buildPaymentOption('TRANSFER', Icons.account_balance_rounded,
+                      const Color(0xFF4CC9F0)),
+                  _buildPaymentOption(
+                      'MOBILE', Icons.wallet_rounded, const Color(0xFF7209B7)),
                 ],
               ),
             ],
@@ -859,6 +916,7 @@ class _PosScreenState extends State<PosScreen> {
       onTap: () {
         setState(() => _selectedPaymentMethod = method);
         Navigator.pop(context);
+        _processPayment(totalAmount);
       },
       child: Container(
         padding: const EdgeInsets.all(11),
@@ -880,12 +938,17 @@ class _PosScreenState extends State<PosScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              method == 'CARTA' ? 'Carta' :
-              method == 'CONTANTE' ? 'Contanti' :
-              method == 'TICKET' ? 'Buono' :
-              method == 'SATISPAY' ? 'Satispay' :
-              method == 'TRANSFER' ? 'Bonifico' :
-              'Mobile',
+              method == 'CARTA'
+                  ? 'Carta'
+                  : method == 'CONTANTE'
+                      ? 'Contanti'
+                      : method == 'TICKET'
+                          ? 'Buono'
+                          : method == 'SATISPAY'
+                              ? 'Satispay'
+                              : method == 'TRANSFER'
+                                  ? 'Bonifico'
+                                  : 'Mobile',
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -900,7 +963,7 @@ class _PosScreenState extends State<PosScreen> {
     );
   }
 
-   Future<void> _processPayment(double total) async {
+  Future<void> _processPayment(double total) async {
     if (_cartItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Cart is empty')),
@@ -909,6 +972,85 @@ class _PosScreenState extends State<PosScreen> {
     }
 
     final paymentMethod = _selectedPaymentMethod ?? 'CONTANTE';
+
+    // Check for receipt printer
+    final printer = await _paymentService.getReceiptPrinter();
+    bool proceedWithoutReceipt = false;
+
+    if (printer == null) {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: surfaceColor,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.print_disabled_rounded,
+                        color: Colors.orange, size: 32),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Stampante non trovata',
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Nessuna stampante fiscale configurata. Vuoi procedere con il pagamento senza scontrino?',
+                    style: TextStyle(fontSize: 14, color: textSecondary),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Annulla',
+                              style: TextStyle(color: textSecondary)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8)),
+                          ),
+                          child: const Text('Procedi'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      if (confirm != true) return;
+      proceedWithoutReceipt = true;
+    }
 
     final items = _cartItems.map((cartItem) {
       return {
@@ -919,12 +1061,129 @@ class _PosScreenState extends State<PosScreen> {
       };
     }).toList();
 
-    final responseBody = await _paymentService.printReceiptAndGetResponse(
-      items,
-      total,
-      paymentMethod,
-      totalDiscount: _totalDiscount,
-    );
+    String? responseBody;
+    if (!proceedWithoutReceipt) {
+      responseBody = await _paymentService.printReceiptAndGetResponse(
+        items,
+        total,
+        paymentMethod,
+        totalDiscount: _totalDiscount,
+      );
+
+      if (responseBody == null && mounted) {
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (context) => Dialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 380),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Icon with subtle background
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEE2E2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.print_disabled_rounded,
+                        color: Color(0xFFDC2626),
+                        size: 36,
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Title
+                    const Text(
+                      'Stampante non risponde',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                        height: 1.3,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Description
+                    const Text(
+                      'La stampante non risponde. Vuoi procedere comunque con il pagamento senza scontrino?',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Color(0xFF666666),
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    // Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF666666),
+                              side: const BorderSide(color: Color(0xFFE5E5E5)),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: const Text(
+                              'Annulla',
+                              style: TextStyle(fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFDC2626),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: const Text(
+                              'Procedi',
+                              style: TextStyle(fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+
+        if (confirm == true) {
+          proceedWithoutReceipt = true;
+        } else {
+          return;
+        }
+      }
+    }
 
     final errors = <String>[];
     bool hasPaperWarning = false;
@@ -932,39 +1191,41 @@ class _PosScreenState extends State<PosScreen> {
     Map<String, dynamic> fiscalData = {};
     int transactionId = 0;
 
-    if (responseBody != null) {
-      fiscalData = _paymentService.parsePrinterResponse(responseBody);
-      statusSegments =
-          (fiscalData['statusSegments'] as Map<String, String>?) ?? {};
+    if (proceedWithoutReceipt || responseBody != null) {
+      if (responseBody != null) {
+        fiscalData = _paymentService.parsePrinterResponse(responseBody);
+        statusSegments =
+            (fiscalData['statusSegments'] as Map<String, String>?) ?? {};
 
-      if (statusSegments.isNotEmpty) {
-        _paymentService.validatePrinterStatus(statusSegments, errors);
-        hasPaperWarning = _paymentService.checkPaperWarning(statusSegments);
-      }
+        if (statusSegments.isNotEmpty) {
+          _paymentService.validatePrinterStatus(statusSegments, errors);
+          hasPaperWarning = _paymentService.checkPaperWarning(statusSegments);
+        }
 
-      if (hasPaperWarning && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.warning_amber_rounded, color: Colors.white),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Attenzione: Carta in esaurimento. Sostituire il rotolo al più presto.',
-                    style: TextStyle(fontWeight: FontWeight.w500),
+        if (hasPaperWarning && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.white),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Attenzione: Carta in esaurimento. Sostituire il rotolo al più presto.',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 5),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 5),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
+          );
+        }
       }
 
       if (errors.isEmpty) {
@@ -975,12 +1236,12 @@ class _PosScreenState extends State<PosScreen> {
           discount: _totalDiscount,
         );
 
-        if (transactionId > 0) {
+        if (transactionId > 0 && responseBody != null) {
           await _paymentService.updateTransactionWithFiscalData(
             transactionId,
             fiscalData,
           );
-          
+
           // Update last verified date from fiscal date
           if (fiscalData['fiscalReceiptDate'] != null) {
             await SubscriptionService().updateLastVerifiedDateFromFiscal(
@@ -1018,16 +1279,19 @@ class _PosScreenState extends State<PosScreen> {
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: (responseBody != null && errors.isEmpty)
+                      color: (proceedWithoutReceipt ||
+                              (responseBody != null && errors.isEmpty))
                           ? const Color(0xFF06D6A0).withOpacity(0.1)
                           : const Color(0xFFFCA5A5).withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      (responseBody != null && errors.isEmpty)
+                      (proceedWithoutReceipt ||
+                              (responseBody != null && errors.isEmpty))
                           ? Icons.check_circle_rounded
                           : Icons.warning_rounded,
-                      color: (responseBody != null && errors.isEmpty)
+                      color: (proceedWithoutReceipt ||
+                              (responseBody != null && errors.isEmpty))
                           ? const Color(0xFF06D6A0)
                           : const Color(0xFFDC2626),
                       size: 36,
@@ -1035,7 +1299,8 @@ class _PosScreenState extends State<PosScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    (responseBody != null && errors.isEmpty)
+                    (proceedWithoutReceipt ||
+                            (responseBody != null && errors.isEmpty))
                         ? 'Ordine Completato!'
                         : 'Avvertenza Stampante',
                     style: const TextStyle(
@@ -1045,7 +1310,8 @@ class _PosScreenState extends State<PosScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  if (responseBody != null && errors.isEmpty)
+                  if (proceedWithoutReceipt ||
+                      (responseBody != null && errors.isEmpty))
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -1064,13 +1330,26 @@ class _PosScreenState extends State<PosScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            _paymentService.getPaymentMethodLabel(paymentMethod),
+                            _paymentService
+                                .getPaymentMethodLabel(paymentMethod),
                             style: const TextStyle(
                               fontSize: 13,
                               color: Color(0xFF6C757D),
                               fontWeight: FontWeight.w500,
                             ),
                           ),
+                          if (proceedWithoutReceipt)
+                            const Padding(
+                              padding: EdgeInsets.only(top: 8),
+                              child: Text(
+                                '(Senza scontrino)',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.orange,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     )
@@ -1088,7 +1367,7 @@ class _PosScreenState extends State<PosScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (responseBody == null)
+                          if (responseBody == null && !proceedWithoutReceipt)
                             const Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -1152,10 +1431,10 @@ class _PosScreenState extends State<PosScreen> {
                         Navigator.pop(context);
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            (responseBody != null && errors.isEmpty)
-                                ? const Color(0xFF4361EE)
-                                : const Color(0xFFDC2626),
+                        backgroundColor: (proceedWithoutReceipt ||
+                                (responseBody != null && errors.isEmpty))
+                            ? const Color(0xFF4361EE)
+                            : const Color(0xFFDC2626),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -1163,7 +1442,8 @@ class _PosScreenState extends State<PosScreen> {
                         ),
                       ),
                       child: Text(
-                        (responseBody != null && errors.isEmpty)
+                        (proceedWithoutReceipt ||
+                                (responseBody != null && errors.isEmpty))
                             ? 'Nuovo Ordine'
                             : 'Annulla',
                         style: const TextStyle(
@@ -1209,6 +1489,7 @@ class _PosScreenState extends State<PosScreen> {
       CartFunctions.addToCartWithCustomPrice(_cartItems, product, price);
     });
   }
+
   void _opencartpage() {
     if (!_showCart) {
       _toggleCart();
@@ -1368,7 +1649,8 @@ class _PosScreenState extends State<PosScreen> {
         elevation: 0,
         leading: IconButton(
           onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-          icon: const Icon(Icons.menu_rounded, color: Color(0xFF1A1A1A), size: 26),
+          icon: const Icon(Icons.menu_rounded,
+              color: Color(0xFF1A1A1A), size: 26),
         ),
         title: _isSmallScreen
             ? SizedBox(
@@ -1594,7 +1876,7 @@ class _PosScreenState extends State<PosScreen> {
                   ),
                   _buildDrawerItem(
                     icon: Icons.print_outlined,
-                    text: 'Stampanti',
+                    text: 'Gestione Stampanti',
                     selected: _selectedMenu == 'stampante',
                     onTap: () {
                       Navigator.pop(context);
@@ -1607,7 +1889,7 @@ class _PosScreenState extends State<PosScreen> {
                   ),
                   _buildDrawerItem(
                     icon: Icons.point_of_sale_rounded,
-                    text: 'Stampante Fiscale',
+                    text: 'Cassa Fiscale',
                     selected: false,
                     onTap: () {
                       Navigator.pop(context);
@@ -1674,7 +1956,7 @@ class _PosScreenState extends State<PosScreen> {
           style: TextStyle(
             color: selected ? const Color(0xFF2D6FF1) : const Color(0xFF4B5563),
             fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-            fontSize: 14,
+            fontSize: 18,
           ),
         ),
         dense: true,
@@ -1795,37 +2077,36 @@ class _PosScreenState extends State<PosScreen> {
   //to check
 
   Widget _buildMobileKeypadPanel() {
-  return  SafeArea(
-  bottom: true,
-  child: Scaffold(
-    body: Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-      ),
-      child: Column(
-        children: [  
-          // Keypad
-          Expanded(
-            child: NumericKeypad(
-              onNumberTap: _handleNumberInput,
-              onClear: _clearKeypad,
-              onBackspace: _handleBackspace,
-              onXTap: _handleXPress,
-              onPayment: ()=> _opencartpage(),
-              onPreAccount: () => _handlePrint(),
-              totalAmount: totalAmount,
-              selectedPaymentMethod: _selectedPaymentMethod,
-              onShowPaymentModal: () => _showPaymentMethodModal(context),
-            ),
+    return SafeArea(
+      bottom: true,
+      child: Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
           ),
-        ],
+          child: Column(
+            children: [
+              // Keypad
+              Expanded(
+                child: NumericKeypad(
+                  onNumberTap: _handleNumberInput,
+                  onClear: _clearKeypad,
+                  onBackspace: _handleBackspace,
+                  onXTap: _handleXPress,
+                  onPayment: () => _opencartpage(),
+                  onPreAccount: () => _handlePrint(),
+                  totalAmount: totalAmount,
+                  totalDiscount: _totalDiscount,
+                  selectedPaymentMethod: _selectedPaymentMethod,
+                  onShowPaymentModal: () => _showPaymentMethodModal(context),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-    ),
-  ),
-  );
+    );
   }
-
-
 
   Widget _buildProductsPanel(List<Articolo> filteredList) {
     return Column(
@@ -1913,108 +2194,113 @@ class _PosScreenState extends State<PosScreen> {
 
         // Products Grid
         Expanded(
-          child: filteredList.isEmpty
-              ? const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.search_off,
-                        size: 48,
-                        color: Color(0xFFD1D5DB),
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        'No products found',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Color(0xFF6B7280),
-                          fontWeight: FontWeight.w500,
+          child: GestureDetector(
+            onLongPress: _triggerShowAddCard,
+            behavior: HitTestBehavior.opaque,
+            child: filteredList.isEmpty
+                ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.search_off,
+                          size: 48,
+                          color: Color(0xFFD1D5DB),
                         ),
-                      ),
-                    ],
-                  ),
-                )
-              : GridView.builder(
-                  padding: const EdgeInsets.all(8),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: _calculateGridColumns(),
-                    crossAxisSpacing: 4,
-                    mainAxisSpacing: 4,
-                    childAspectRatio: _isSmallScreen ? 1.25 : 1.35,
-                  ),
-                  itemCount: filteredList.length + 1,
-                  itemBuilder: (context, index) {
-                    if (index == filteredList.length) {
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const AnagraficaScreen(),
-                            ),
-                          );
-                        },
-                        child: CustomPaint(
-                          painter: DashedBorderPainter(
-                            color: Color.fromARGB(255, 106, 130, 238),
-                            strokeWidth: 2,
+                        SizedBox(height: 16),
+                        Text(
+                          'No products found',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF6B7280),
+                            fontWeight: FontWeight.w500,
                           ),
-                          child: Center(
-                            child: Icon(
-                              Icons.add_rounded,
-                              size: 38,
+                        ),
+                      ],
+                    ),
+                  )
+                : GridView.builder(
+                    padding: const EdgeInsets.all(8),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: _calculateGridColumns(),
+                      crossAxisSpacing: 4,
+                      mainAxisSpacing: 4,
+                      childAspectRatio: _isSmallScreen ? 1.25 : 1.35,
+                    ),
+                    itemCount:
+                        _showAddCard ? filteredList.length + 1 : filteredList.length,
+                    itemBuilder: (context, index) {
+                      if (_showAddCard && index == filteredList.length) {
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _showAddCard = false;
+                              _addCardTimer?.cancel();
+                            });
+                            _navigateToAnagrafica();
+                          },
+                          child: CustomPaint(
+                            painter: DashedBorderPainter(
                               color: Color.fromARGB(255, 106, 130, 238),
+                              strokeWidth: 2,
+                            ),
+                            child: Center(
+                              child: Icon(
+                                Icons.add_rounded,
+                                size: 38,
+                                color: Color.fromARGB(255, 106, 130, 238),
+                              ),
                             ),
                           ),
-                        ),
-                      );
-                    }
-
-                    final articolo = filteredList[index];
-                    final productId = articolo.id.toString();
-
-                    final isInCart =
-                        _cartItems.any((item) => item.product.id == productId);
-
-                    CartItem? cartItem;
-                    try {
-                      cartItem = _cartItems.firstWhere(
-                        (item) => item.product.id == productId,
-                      );
-                    } catch (_) {
-                      cartItem = null;
-                    }
-
-                    final displayProduct = Product(
-                      id: productId,
-                      name: articolo.descrizione,
-                      category: articolo.categoriaId.toString(),
-                      price: articolo.prezzo,
-                      description: articolo.descrizione,
-                      iva: articolo.iva,
-                    );
-
-                    String? selectedPrice;
-                    if (_keypadFirstNumber.isNotEmpty) {
-                      if (_keypadXPressed && _keypadSecondNumber.isNotEmpty) {
-                        selectedPrice = 'Qtà: $_keypadFirstNumber • €$_keypadSecondNumber';
-                      } else if (_keypadXPressed) {
-                        selectedPrice = 'Qtà: $_keypadFirstNumber';
-                      } else {
-                        selectedPrice = '€$_keypadFirstNumber';
+                        );
                       }
-                    }
 
-                    return ProductCard(
-                      product: displayProduct,
-                      onTap: () => _handleProductTapWithKeypad(articolo),
-                      isInCart: isInCart,
-                      quantity: cartItem?.quantity,
-                      selectedPrice: selectedPrice,
-                    );
-                  },
-                ),
+                      final articolo = filteredList[index];
+                      final productId = articolo.id.toString();
+
+                      final isInCart =
+                          _cartItems.any((item) => item.product.id == productId);
+
+                      CartItem? cartItem;
+                      try {
+                        cartItem = _cartItems.firstWhere(
+                          (item) => item.product.id == productId,
+                        );
+                      } catch (_) {
+                        cartItem = null;
+                      }
+
+                      final displayProduct = Product(
+                        id: productId,
+                        name: articolo.descrizione,
+                        category: articolo.categoriaId.toString(),
+                        price: articolo.prezzo,
+                        description: articolo.descrizione,
+                        iva: articolo.iva,
+                      );
+
+                      String? selectedPrice;
+                      if (_keypadFirstNumber.isNotEmpty) {
+                        if (_keypadXPressed && _keypadSecondNumber.isNotEmpty) {
+                          selectedPrice =
+                              'Qtà: $_keypadFirstNumber • €$_keypadSecondNumber';
+                        } else if (_keypadXPressed) {
+                          selectedPrice = 'Qtà: $_keypadFirstNumber';
+                        } else {
+                          selectedPrice = '€$_keypadFirstNumber';
+                        }
+                      }
+
+                      return ProductCard(
+                        product: displayProduct,
+                        onTap: () => _handleProductTapWithKeypad(articolo),
+                        isInCart: isInCart,
+                        quantity: cartItem?.quantity,
+                        selectedPrice: selectedPrice,
+                      );
+                    },
+                  ),
+          ),
         ),
       ],
     );

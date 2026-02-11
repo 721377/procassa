@@ -200,6 +200,8 @@ class CartItem {
     double baseTotal = product.price * quantity;
     if (discount > 0) {
       return baseTotal * (1 - (discount / 100));
+    } else if (discount < 0) {
+      return (baseTotal - discount.abs()).clamp(0, double.infinity);
     }
     return baseTotal;
   }

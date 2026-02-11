@@ -201,4 +201,8 @@ class PaymentService {
         return method;
     }
   }
+
+  Future<Stampante?> getReceiptPrinter() async {
+    return await _databaseService.getEpsonReceiptPrinter();
+  }
 }

@@ -9,6 +9,7 @@ class NumericKeypad extends StatefulWidget {
   final VoidCallback? onPreAccount;
   final bool isCompact;
   final double totalAmount;
+  final double totalDiscount;
   final String? selectedPaymentMethod;
   final VoidCallback? onShowPaymentModal;
   final VoidCallback? onTotalLongPress;
@@ -23,6 +24,7 @@ class NumericKeypad extends StatefulWidget {
     this.onPreAccount,
     this.isCompact = false,
     required this.totalAmount,
+    this.totalDiscount = 0,
     this.selectedPaymentMethod,
     this.onShowPaymentModal,
     this.onTotalLongPress,
@@ -32,18 +34,20 @@ class NumericKeypad extends StatefulWidget {
   State<NumericKeypad> createState() => _NumericKeypadState();
 }
 
+
 class _NumericKeypadState extends State<NumericKeypad> {
   String? _pressedKey;
   bool get _isWideScreen => MediaQuery.of(context).size.width >= 768;
+  
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isSmallScreen = constraints.maxWidth < 450;
 
-        final buttonSpacing = isSmallScreen ? 2.5 : 4.0;
+        final buttonSpacing = isSmallScreen ? 1.85 : 3.12;
         final fontSize = isSmallScreen ? 22.0 : 24.0;
-        final cornerRadius = 12.0;
+        final cornerRadius = 8.0; // Slightly more square to save space
 
         return Container(
           decoration: BoxDecoration(
@@ -98,6 +102,8 @@ class _NumericKeypadState extends State<NumericKeypad> {
                           ),
                           Text(
                             '€${widget.totalAmount.toStringAsFixed(2)}',
+                            // ignore: avoid_print
+                           
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
@@ -110,14 +116,14 @@ class _NumericKeypadState extends State<NumericKeypad> {
                   ),
                 ),
                 if (widget.selectedPaymentMethod != null) ...[
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
 
                   // Payment Method Tag
                   GestureDetector(
                     onTap: widget.onShowPaymentModal,
                     child: Container(
                       height: 35,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
                       decoration: BoxDecoration(
                         color: const Color(0xFF06D6A0).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
@@ -129,22 +135,60 @@ class _NumericKeypadState extends State<NumericKeypad> {
                         mainAxisSize: MainAxisSize.min,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.check_circle,
-                            size: 14,
-                            color: const Color(0xFF06D6A0),
+                            size: 12,
+                            color: Color(0xFF06D6A0),
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 4),
                           Text(
                             _getPaymentMethodLabel(widget.selectedPaymentMethod!),
-                            style: TextStyle(
-                              fontSize: 11,
+                            style: const TextStyle(
+                              fontSize: 10,
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFF06D6A0),
+                              color: Color(0xFF06D6A0),
                             ),
                           ),
                         ],
                       ),
+                    ),
+                  ),
+                ],
+                if (widget.totalDiscount != 0) ...[
+                  const SizedBox(width: 8),
+
+                  // Discount Tag
+                  Container(
+                    height: 35,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF476F).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFFEF476F).withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.local_offer_rounded,
+                          size: 12,
+                          color: Color(0xFFEF476F),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          widget.totalDiscount > 0
+                              ? '-${widget.totalDiscount.toStringAsFixed(0)}%'
+                              : '-€${widget.totalDiscount.abs().toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFEF476F),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -155,7 +199,7 @@ class _NumericKeypadState extends State<NumericKeypad> {
           // Main Keypad - Numeric Buttons
           Expanded(
             child: Container(
-              padding: EdgeInsets.all(isSmallScreen ? 9 : 12),
+              padding: EdgeInsets.all(isSmallScreen ? 4 : 6),
               child: Column(
                 children: [
                   // Row 1: 7 8 9 C
@@ -271,7 +315,7 @@ class _NumericKeypadState extends State<NumericKeypad> {
 
           // Bottom Section: Preconto and Pagamento Buttons
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: Colors.white,
               border: Border(
@@ -286,8 +330,8 @@ class _NumericKeypadState extends State<NumericKeypad> {
                 // Preconto Button
                 Expanded(
                   child: Container(
-                    height: 50,
-                    margin: const EdgeInsets.only(right: 6),
+                    height: 44,
+                    margin: const EdgeInsets.only(right: 4),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
@@ -371,10 +415,8 @@ class _NumericKeypadState extends State<NumericKeypad> {
                                 color: Colors.white,
                               ),
                               const SizedBox(width: 8),
-                              Text(
-                                widget.selectedPaymentMethod != null
-                                    ? 'PAGARE'
-                                    : 'PAGAMENTO',
+                              Text('Scontrino',
+                                
                                 style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,

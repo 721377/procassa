@@ -1415,7 +1415,7 @@ class _StampantiScreenState extends State<StampantiScreen> {
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String?>(
               isExpanded: true,
-              value: _selectedProtocollo,
+              value:(_selectedReceiptPrinterType == 'Epson') ? 'EpsonXml' : _selectedProtocollo,
               icon: const Icon(Icons.arrow_drop_down_rounded),
               iconSize: 24,
               elevation: 0,
@@ -1428,7 +1428,7 @@ class _StampantiScreenState extends State<StampantiScreen> {
               ),
               onChanged: (value) {
                 setDialogState(() {
-                  _selectedProtocollo = value;
+                  _selectedProtocollo =  value;
                 });
               },
               items: _protocolli.map((proto) {
