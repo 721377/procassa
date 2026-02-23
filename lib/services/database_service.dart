@@ -26,7 +26,7 @@ class DatabaseService {
 
     final db = await openDatabase(
       path,
-      version: 15,
+      version: 17,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -171,6 +171,12 @@ class DatabaseService {
     } else if (oldVersion < 15) {
       await db.execute('ALTER TABLE local_users ADD COLUMN role INTEGER');
     }
+    if (oldVersion < 16) {
+      await db.execute('ALTER TABLE stampanti ADD COLUMN isInternal INTEGER DEFAULT 0');
+    }
+    if (oldVersion < 17) {
+      await db.execute('ALTER TABLE stampanti ADD COLUMN matricola TEXT');
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -217,7 +223,9 @@ class DatabaseService {
     isDefault INTEGER DEFAULT 0,
     printerModel TEXT,
     receiptPrinterType TEXT,
-    printerNumber TEXT
+    printerNumber TEXT,
+    isInternal INTEGER DEFAULT 0,
+    matricola TEXT
   )
     ''');
 

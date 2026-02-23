@@ -2,6 +2,8 @@
 
 import 'dart:developer';
 import 'dart:typed_data';
+import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:xml/xml.dart';
 import 'package:esc_pos_printer_plus/esc_pos_printer_plus.dart';
@@ -21,6 +23,7 @@ class PrintingService {
   final String _ethernetIp = '';
   final int _port = 9100;
   String? _lastError;
+  final DatabaseService _db = DatabaseService();
 
   List<String> get devices => _devices;
   bool get isDiscovering => _isDiscovering;
@@ -490,6 +493,18 @@ Future<void> _printCommandContent(
           print('xml data: $xmlData');
           return await _sendXmlToRCHPrinter(printer, xmlData);
 
+        case 'Custom':
+          if (printer.tipoProtocollo == 'CustomXml') {
+            final xmlData = _generateCustomFiscalXml(
+                receiptData, printer.isInternal ?? false);
+            print('xml data (CustomXml): $xmlData');
+            return await _sendXmlToCustomPrinter(printer, xmlData);
+          } else {
+            // Placeholder for other Custom protocols
+            final xmlData = _generateFiscalXmlRCH(receiptData);
+            return await _sendXmlToRCHPrinter(printer, xmlData);
+          }
+
         default:
           log('Unsupported printer type: ${printer.printerType}');
           return null;
@@ -741,6 +756,55 @@ Future<void> _printCommandContent(
     }
   }
 
+  Future<String?> _sendXmlToCustomPrinter(
+      Stampante printer, String xmlData) async {
+    try {
+      final url = "http://${printer.indirizzoIp}/xml/printer.htm";
+      final matricola = printer.matricola ?? '';
+      
+      if (matricola.isEmpty) {
+        log('Warning: Custom printer matricola is empty');
+      }
+
+      final credentials = '$matricola:$matricola';
+      final basicAuth = 'Basic ${base64Encode(utf8.encode(credentials))}';
+
+      log('Sending Custom XML to: $url');
+      print('Using Basic Auth with matricola: $matricola');
+      print('XML Data: $xmlData');
+
+      final client = HttpClient();
+      final request = await client.postUrl(Uri.parse(url));
+      
+      // Set headers exactly as in customtest.dart
+      request.headers.set('Content-Type', 'text/plain');
+      request.headers.set('authorization', basicAuth);
+      request.headers.set('Content-Length', xmlData.length.toString());
+      
+      request.write(xmlData);
+      
+      final response = await request.close().timeout(const Duration(seconds: 15));
+      final responseBody = await response.transform(utf8.decoder).join();
+      
+      client.close();
+
+      log('Custom printer response: ${response.statusCode}');
+      print('Custom printer response status: ${response.statusCode}');
+      print('Custom printer response body: ${responseBody}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        log('Receipt printed successfully on Custom printer');
+        return responseBody;
+      } else {
+        log('Custom printer error: ${response.statusCode} $responseBody');
+        return null;
+      }
+    } catch (e) {
+      log('Error sending XML to Custom printer: $e');
+      return null;
+    }
+  }
+
   // ============================================================================
   // RCH FISCAL PRINTER - RECEIPT PRINTING
   // ============================================================================
@@ -867,6 +931,121 @@ Future<void> _printCommandContent(
     return serviceBuffer.toString();
   }
 
+  String _generateCustomRefundXml({
+    required List<Map<String, dynamic>> refundItems,
+    required String paymentMethod,
+  }) {
+    final StringBuffer itemsBuffer = StringBuffer();
+    double totalRefund = 0;
+
+    for (final item in refundItems) {
+      final name = item['name'] as String? ?? 'Item';
+      final price = (item['price'] as num?)?.toDouble() ?? 0.0;
+      final quantity = (item['quantity'] as num?)?.toDouble() ?? 1.0;
+      final ivaCode = item['ivaCode'] as String?;
+
+      int department = 1;
+      if (ivaCode != null && SimpleIvaManager.isValid(ivaCode)) {
+        department = SimpleIvaManager.getDepartment(ivaCode);
+      }
+
+      final priceCents = (price * 100).toInt().toString();
+
+      // Repeat printRecRefund for multiple quantities
+      for (int i = 0; i < quantity.toInt(); i++) {
+        itemsBuffer.writeln(
+            '<printRecRefund description="$name" unitPrice="$priceCents" department="$department"></printRecRefund>');
+      }
+      totalRefund += price * quantity;
+    }
+
+    String paymentTypeIdx = '1';
+    if (paymentMethod.toUpperCase() == 'CARTA' ||
+        paymentMethod.toUpperCase() == 'POS' ||
+        paymentMethod.toUpperCase() == 'SATISPAY') {
+      paymentTypeIdx = '2';
+    }
+
+    final totalCentsStr = (totalRefund * 100).toInt().toString();
+
+    return '''<?xml version="1.0" encoding="utf-8"?>
+<printerFiscalReceipt>
+  <beginFiscalReceipt></beginFiscalReceipt>
+  ${itemsBuffer.toString()}
+  <printRecTotal description="$paymentMethod" payment="$totalCentsStr" paymentType="$paymentTypeIdx"></printRecTotal>
+  <endFiscalReceiptCut></endFiscalReceiptCut>
+</printerFiscalReceipt>''';
+  }
+
+  String _generateCustomFiscalXml(
+      Map<String, dynamic> receiptData, bool isInternal) {
+    final items = receiptData['items'] as List<Map<String, dynamic>>;
+    final paymentType = receiptData['paymentType'] as String?;
+
+    final StringBuffer itemsBuffer = StringBuffer();
+
+    for (final item in items) {
+      final name = item['name'] as String? ?? 'Item';
+      final price = (item['price'] as num?)?.toDouble() ?? 0.0;
+      final quantity = (item['quantity'] as num?)?.toDouble() ?? 1.0;
+      final ivaCode = item['ivaCode'] as String?;
+
+      int department = 1;
+      if (ivaCode != null && SimpleIvaManager.isValid(ivaCode)) {
+        department = SimpleIvaManager.getDepartment(ivaCode);
+      }
+
+      // Price in cents (integer string)
+      final unitPriceCents = (price * 100).toInt().toString();
+
+      if (isInternal) {
+        // Repeated lines for internal
+        for (int i = 0; i < quantity.toInt(); i++) {
+          itemsBuffer.writeln(
+              '<printRecItem description="$name" unitPrice="$unitPriceCents" department="$department"></printRecItem>');
+        }
+      } else {
+        // Quantity attribute for external
+        itemsBuffer.writeln(
+            '<printRecItem description="$name" unitPrice="$unitPriceCents" quantity="${quantity.toInt()}" department="$department"></printRecItem>');
+      }
+    }
+
+    String paymentTypeIdx = '1'; // Contanti default
+    String paymentDescription = 'Contanti';
+    if (paymentType != null) {
+      switch (paymentType.toUpperCase()) {
+        case 'CARTA':
+        paymentTypeIdx = '3'; 
+        paymentDescription = 'Carta';
+        break;
+        case 'SATISPAY':
+        paymentTypeIdx = '3'; 
+        case 'TICKET':
+          paymentTypeIdx = '9';
+          break;
+        case 'BUONO':
+          paymentTypeIdx = '14';
+          break;
+        default:
+          paymentTypeIdx = '1';
+          paymentDescription = 'Contanti';
+      }
+    }
+
+    // Calculated total for payment
+    final totalCents = (receiptData['total'] as num?)?.toDouble() ?? 0.0;
+    final totalCentsStr = (totalCents * 100).toInt().toString();
+
+    return '''<?xml version="1.0" encoding="utf-8"?>
+<printerFiscalReceipt>
+  <beginFiscalReceipt></beginFiscalReceipt>
+  ${itemsBuffer.toString()}
+  <printRecTotal description="$paymentDescription" payment="$totalCentsStr" paymentType="$paymentTypeIdx"></printRecTotal>
+  <endFiscalReceiptCut></endFiscalReceiptCut>
+</printerFiscalReceipt>''';
+  }
+
   String _escapeRCHDescription(String description) {
     String escaped = description.replaceAll(')', '))');
 
@@ -921,11 +1100,24 @@ Future<void> _printCommandContent(
     try {
       final printer = await _getEpsonReceiptPrinter();
       if (printer == null) {
-        log('Epson receipt printer not found for Z Report');
+        log('Receipt printer not found for Z Report');
         return null;
       }
 
-      const xmlData = '''<?xml version="1.0" encoding="utf-8"?>
+      String xmlData;
+      if (printer.receiptPrinterType == 'Custom' &&
+          printer.tipoProtocollo == 'CustomXml') {
+        xmlData = '''<?xml version="1.0" encoding="utf-8"?>
+<printerFiscalReport>
+  <printZReport description="CHIUSURA GIORNALIERA"></printZReport>
+</printerFiscalReport>''';
+        log('Sending Z Report (Chiusura) to Custom printer');
+        final responseBody = await _sendXmlToCustomPrinter(printer, xmlData);
+        if (responseBody != null) {
+          return {'success': true, 'response': responseBody};
+        }
+      } else {
+        xmlData = '''<?xml version="1.0" encoding="utf-8"?>
 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
     <s:Body>
         <printerFiscalReport>
@@ -934,27 +1126,42 @@ Future<void> _printCommandContent(
     </s:Body>
 </s:Envelope>''';
 
-      log('Sending Z Report (Chiusura) to Epson printer');
-      final responseBody = await _sendXmlToEpsonPrinter(printer, xmlData);
-      
-      if (responseBody != null) {
-        return _parseZReportResponse(responseBody);
+        log('Sending Z Report (Chiusura) to Epson printer');
+        final responseBody = await _sendXmlToEpsonPrinter(printer, xmlData);
+
+        if (responseBody != null) {
+          return _parseZReportResponse(responseBody);
+        }
       }
     } catch (e) {
-      log('Error in printZReportEpson: $e');
+      log('Error in printchiusuraEpson: $e');
     }
     return null;
   }
+
   //report fiscale
   Future<Map<String, dynamic>?> printaReportEpson() async {
     try {
       final printer = await _getEpsonReceiptPrinter();
       if (printer == null) {
-        log('Epson receipt printer not found for Z Report');
+        log('Receipt printer not found for X Report');
         return null;
       }
 
-      const xmlData = '''<?xml version="1.0" encoding="utf-8"?>
+      String xmlData;
+      if (printer.receiptPrinterType == 'Custom' &&
+          printer.tipoProtocollo == 'CustomXml') {
+        xmlData = '''<?xml version="1.0" encoding="utf-8"?>
+<printerFiscalReport>
+  <printXReport></printXReport>
+</printerFiscalReport>''';
+        log('Sending X Report (Lettura) to Custom printer');
+        final responseBody = await _sendXmlToCustomPrinter(printer, xmlData);
+        if (responseBody != null) {
+          return {'success': true, 'response': responseBody};
+        }
+      } else {
+        xmlData = '''<?xml version="1.0" encoding="utf-8"?>
 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
     <s:Body>
         <printerFiscalReport>
@@ -963,16 +1170,37 @@ Future<void> _printCommandContent(
     </s:Body>
 </s:Envelope>''';
 
-      log('Sending Z Report (Chiusura) to Epson printer');
-      final responseBody = await _sendXmlToEpsonPrinter(printer, xmlData);
-      
-      if (responseBody != null) {
-        return _parseZReportResponse(responseBody);
+        log('Sending X Report (Lettura) to Epson printer');
+        final responseBody = await _sendXmlToEpsonPrinter(printer, xmlData);
+
+        if (responseBody != null) {
+          return _parseZReportResponse(responseBody);
+        }
       }
     } catch (e) {
-      log('Error in printZReportEpson: $e');
+      log('Error in printaReportEpson: $e');
     }
     return null;
+  }
+
+  Future<String?> getPrinterInfoCustom(Stampante printer) async {
+    const xmlData = '''<?xml version="1.0" encoding="utf-8"?>
+<printerCommand>
+  <getInfo></getInfo>
+</printerCommand>''';
+    return await _sendXmlToCustomPrinter(printer, xmlData);
+  }
+
+  Future<String?> printRefundReceiptCustom({
+    required Stampante printer,
+    required List<Map<String, dynamic>> refundItems,
+    required String paymentMethod,
+  }) async {
+    final xmlData = _generateCustomRefundXml(
+      refundItems: refundItems,
+      paymentMethod: paymentMethod,
+    );
+    return await _sendXmlToCustomPrinter(printer, xmlData);
   }
 
   Map<String, dynamic>? _parseZReportResponse(String responseBody) {

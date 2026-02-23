@@ -24,6 +24,7 @@ class _StampantiScreenState extends State<StampantiScreen> {
       TextEditingController();
   final TextEditingController _printerNumberController =
       TextEditingController();
+  final TextEditingController _matricolaController = TextEditingController();
 
   // Bluetooth related variables
   final List<BluetoothDevice> _availableDevices = [];
@@ -38,14 +39,16 @@ class _StampantiScreenState extends State<StampantiScreen> {
   String? _selectedPrinterModel;
   String? _selectedReceiptPrinterType;
   bool _isDefaultPrinter = false;
+  bool _isInternalPrinter = false;
   final List<String?> _protocolli = [
     'standar',
     'EpsonXml',
+    'CustomXml',
     'XON/XOFF',
     'Custom'
   ];
   final List<String> _printerModels = ['Generic', 'Sunmi Pro'];
-  final List<String> _receiptPrinterTypes = ['Epson', 'RCH'];
+  final List<String> _receiptPrinterTypes = ['Epson', 'RCH', 'Custom'];
 
   @override
   void initState() {
@@ -92,6 +95,7 @@ class _StampantiScreenState extends State<StampantiScreen> {
     _portaController.dispose();
     _bluetoothAddressController.dispose();
     _printerNumberController.dispose();
+    _matricolaController.dispose();
     super.dispose();
   }
 
@@ -234,12 +238,14 @@ class _StampantiScreenState extends State<StampantiScreen> {
     _portaController.clear();
     _bluetoothAddressController.clear();
     _printerNumberController.clear();
+    _matricolaController.clear();
     _selectedProtocollo = null;
     _selectedPrinterCategory = null;
     _selectedOrderPrinterType = null;
     _selectedPrinterModel = null;
     _selectedReceiptPrinterType = null;
     _isDefaultPrinter = false;
+    _isInternalPrinter = false;
     _editingStampante = null;
     _selectedBluetoothDevice = null;
   }
@@ -254,11 +260,13 @@ class _StampantiScreenState extends State<StampantiScreen> {
       _selectedPrinterModel = stampante.printerModel;
       _selectedReceiptPrinterType = stampante.receiptPrinterType;
       _printerNumberController.text = stampante.printerNumber ?? '';
+      _matricolaController.text = stampante.matricola ?? '';
       _selectedOrderPrinterType = stampante.printerModel == 'Sunmi Pro'
           ? 'Sunmi Pro'
           : stampante.orderPrinterType;
       _bluetoothAddressController.text = stampante.bluetoothAddress ?? '';
       _isDefaultPrinter = stampante.isDefault ?? false;
+      _isInternalPrinter = stampante.isInternal ?? false;
       _editingStampante = stampante;
       _selectedBluetoothDevice = null;
     } else {
@@ -525,6 +533,41 @@ class _StampantiScreenState extends State<StampantiScreen> {
         ),
         const SizedBox(height: 20),
         _buildProtocolDropdown(setDialogState),
+        if (_selectedReceiptPrinterType == 'Custom') ...[
+          const SizedBox(height: 20),
+          _buildTextField(
+            controller: _matricolaController,
+            label: 'Matricola',
+            hintText: 'Inserisci la matricola',
+            icon: Icons.assignment_ind_rounded,
+          ),
+          const SizedBox(height: 20),
+          _buildInternalPrinterCheckbox(setDialogState),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildInternalPrinterCheckbox(StateSetter setDialogState) {
+    return Row(
+      children: [
+        Checkbox(
+          value: _isInternalPrinter,
+          onChanged: (value) {
+            setDialogState(() {
+              _isInternalPrinter = value ?? false;
+            });
+          },
+          activeColor: const Color(0xFF2D6FF1),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          'Stampante interna',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[700],
+          ),
+        ),
       ],
     );
   }
@@ -1376,6 +1419,11 @@ class _StampantiScreenState extends State<StampantiScreen> {
               onChanged: (value) {
                 setDialogState(() {
                   _selectedReceiptPrinterType = value;
+                  if (value == 'Epson') {
+                    _selectedProtocollo = 'EpsonXml';
+                  } else if (value == 'Custom') {
+                    _selectedProtocollo = 'CustomXml';
+                  }
                 });
               },
               items: _receiptPrinterTypes.map((type) {
@@ -1415,7 +1463,11 @@ class _StampantiScreenState extends State<StampantiScreen> {
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String?>(
               isExpanded: true,
-              value:(_selectedReceiptPrinterType == 'Epson') ? 'EpsonXml' : _selectedProtocollo,
+              value: (_selectedReceiptPrinterType == 'Epson')
+                  ? 'EpsonXml'
+                  : (_selectedReceiptPrinterType == 'Custom'
+                      ? 'CustomXml'
+                      : _selectedProtocollo),
               icon: const Icon(Icons.arrow_drop_down_rounded),
               iconSize: 24,
               elevation: 0,
@@ -1729,6 +1781,10 @@ class _StampantiScreenState extends State<StampantiScreen> {
                         printerNumber: _printerNumberController.text.isEmpty
                             ? null
                             : _printerNumberController.text,
+                        isInternal: _isInternalPrinter,
+                        matricola: _selectedReceiptPrinterType == 'Custom'
+                            ? _matricolaController.text
+                            : null,
                       );
                       await _db.updateStampante(updated);
                     } else {
@@ -1751,6 +1807,10 @@ class _StampantiScreenState extends State<StampantiScreen> {
                         printerNumber: _printerNumberController.text.isEmpty
                             ? null
                             : _printerNumberController.text,
+                        isInternal: _isInternalPrinter,
+                        matricola: _selectedReceiptPrinterType == 'Custom'
+                            ? _matricolaController.text
+                            : null,
                       );
                       await _db.insertStampante(newStampante);
                     }

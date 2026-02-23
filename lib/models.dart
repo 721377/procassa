@@ -113,6 +113,8 @@ class Stampante {
   String? printerModel; // Printer model: 'Sunmi Pro', 'Generic', etc.
   String? receiptPrinterType; // For receipt printers: 'Epson' or 'RCH'
   String? printerNumber; // Printer number/identifier
+  bool? isInternal; // Whether it is an internal printer
+  String? matricola; // Serial number (matricola)
 
   Stampante({
     this.id,
@@ -128,6 +130,8 @@ class Stampante {
     this.printerModel,
     this.receiptPrinterType,
     this.printerNumber,
+    this.isInternal = false,
+    this.matricola,
   });
 
   Map<String, dynamic> toMap() {
@@ -145,6 +149,8 @@ class Stampante {
       'printerModel': printerModel,
       'receiptPrinterType': receiptPrinterType,
       'printerNumber': printerNumber,
+      'isInternal': (isInternal ?? false) ? 1 : 0,
+      'matricola': matricola,
     };
   }
 
@@ -163,6 +169,8 @@ class Stampante {
       printerModel: map['printerModel'],
       receiptPrinterType: map['receiptPrinterType'],
       printerNumber: map['printerNumber'],
+      isInternal: (map['isInternal'] as int? ?? 0) == 1,
+      matricola: map['matricola'],
     );
   }
 }

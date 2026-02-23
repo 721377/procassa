@@ -51,6 +51,26 @@ class PaymentService {
     try {
       final document = XmlDocument.parse(responseBody);
 
+      // Check for Custom response format
+      final customResponse = document.findElements('response').firstOrNull;
+      if (customResponse != null) {
+        final successAttr = customResponse.getAttribute('success');
+        if (successAttr == 'true') {
+          final addInfo = customResponse.findElements('addInfo').firstOrNull;
+          if (addInfo != null) {
+            final fpStatus = addInfo.findElements('fpStatus').firstOrNull?.innerText;
+            final printerStatus = addInfo.findElements('printerStatus').firstOrNull?.innerText;
+            
+            if (printerStatus != null) {
+              result['printerStatus'] = printerStatus;
+              // Map Custom status to existing decoder if compatible or handle separately
+              // result['statusSegments'] = _decodeCustomStatus(printerStatus);
+            }
+          }
+          return result;
+        }
+      }
+
       final fiscalReceiptNumberElement =
           document.findAllElements('fiscalReceiptNumber').firstOrNull;
       if (fiscalReceiptNumberElement != null) {
