@@ -26,7 +26,7 @@ class DatabaseService {
 
     final db = await openDatabase(
       path,
-      version: 17,
+      version: 20,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -177,6 +177,34 @@ class DatabaseService {
     if (oldVersion < 17) {
       await db.execute('ALTER TABLE stampanti ADD COLUMN matricola TEXT');
     }
+    if (oldVersion < 18) {
+      await db.execute('ALTER TABLE transaction_items ADD COLUMN ivaCode TEXT');
+    }
+    if (oldVersion < 19) {
+      await db.execute('''
+        CREATE TABLE debiti (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          personName TEXT NOT NULL,
+          amount REAL NOT NULL,
+          date TEXT NOT NULL,
+          returnDate TEXT NOT NULL,
+          isFromMe INTEGER DEFAULT 0,
+          isPaid INTEGER DEFAULT 0,
+          hasAlarm INTEGER DEFAULT 0
+        )
+      ''');
+    }
+    if (oldVersion < 20) {
+      await db.execute('''
+        CREATE TABLE app_settings (
+          "key" TEXT PRIMARY KEY,
+          "value" TEXT NOT NULL
+        )
+      ''');
+      // Set default settings
+      await db.insert('app_settings', {'key': 'currency', 'value': '€'});
+      await db.insert('app_settings', {'key': 'language', 'value': 'en'});
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -262,6 +290,7 @@ class DatabaseService {
         quantity INTEGER NOT NULL,
         total REAL NOT NULL,
         discount REAL DEFAULT 0,
+        ivaCode TEXT,
         FOREIGN KEY (transactionId) REFERENCES transactions(id)
       )
     ''');
@@ -295,6 +324,30 @@ class DatabaseService {
         role INTEGER
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE debiti (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        personName TEXT NOT NULL,
+        amount REAL NOT NULL,
+        date TEXT NOT NULL,
+        returnDate TEXT NOT NULL,
+        isFromMe INTEGER DEFAULT 0,
+        isPaid INTEGER DEFAULT 0,
+        hasAlarm INTEGER DEFAULT 0
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE app_settings (
+        "key" TEXT PRIMARY KEY,
+        "value" TEXT NOT NULL
+      )
+    ''');
+
+    // Set default settings
+    await db.insert('app_settings', {'key': 'currency', 'value': '€'});
+    await db.insert('app_settings', {'key': 'language', 'value': 'en'});
   }
 
   Future<int> saveLocalUser(Map<String, dynamic> user) async {
@@ -394,6 +447,60 @@ class DatabaseService {
     );
     if (maps.isEmpty) return null;
     return Articolo.fromMap(maps[0]);
+  }
+
+  // Debit methods
+  Future<int> insertDebit(Debit debit) async {
+    final db = await database;
+    return await db.insert('debiti', debit.toMap());
+  }
+
+  Future<List<Debit>> getDebits() async {
+    final db = await database;
+    final maps = await db.query('debiti', orderBy: 'date DESC');
+    return List.generate(maps.length, (i) => Debit.fromMap(maps[i]));
+  }
+
+  Future<int> updateDebit(Debit debit) async {
+    final db = await database;
+    return await db.update(
+      'debiti',
+      debit.toMap(),
+      where: 'id = ?',
+      whereArgs: [debit.id],
+    );
+  }
+
+  Future<int> deleteDebit(int id) async {
+    final db = await database;
+    return await db.delete(
+      'debiti',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  // App Settings methods
+  Future<void> saveSetting(String key, String value) async {
+    final db = await database;
+    await db.insert(
+      'app_settings',
+      {'key': key, 'value': value},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<String?> getSetting(String key) async {
+    final db = await database;
+    final results = await db.query(
+      'app_settings',
+      where: '"key" = ?',
+      whereArgs: [key],
+    );
+    if (results.isNotEmpty) {
+      return results.first['value'] as String?;
+    }
+    return null;
   }
 
   Future<int> insertStampante(Stampante stampante) async {

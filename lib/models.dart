@@ -359,6 +359,7 @@ class TransactionItem {
   final int quantity;
   final double total;
   final double discount; // Percentage discount for item
+  final String? ivaCode;
 
   TransactionItem({
     this.id,
@@ -368,6 +369,7 @@ class TransactionItem {
     required this.quantity,
     required this.total,
     this.discount = 0,
+    this.ivaCode,
   });
 
   Map<String, dynamic> toMap() {
@@ -379,6 +381,7 @@ class TransactionItem {
       'quantity': quantity,
       'total': total,
       'discount': discount,
+      'ivaCode': ivaCode,
     };
   }
 
@@ -391,6 +394,77 @@ class TransactionItem {
       quantity: map['quantity'],
       total: map['total'],
       discount: map['discount']?.toDouble() ?? 0.0,
+      ivaCode: map['ivaCode'],
     );
   }
 }
+
+class Debit {
+  final int? id;
+  final String personName;
+  final double amount;
+  final DateTime date;
+  final DateTime returnDate;
+  final bool isFromMe; // true if I owe them, false if they owe me
+  final bool isPaid;
+  final bool hasAlarm;
+
+  Debit({
+    this.id,
+    required this.personName,
+    required this.amount,
+    required this.date,
+    required this.returnDate,
+    required this.isFromMe,
+    this.isPaid = false,
+    this.hasAlarm = false,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'personName': personName,
+      'amount': amount,
+      'date': date.toIso8601String(),
+      'returnDate': returnDate.toIso8601String(),
+      'isFromMe': isFromMe ? 1 : 0,
+      'isPaid': isPaid ? 1 : 0,
+      'hasAlarm': hasAlarm ? 1 : 0,
+    };
+  }
+
+  factory Debit.fromMap(Map<String, dynamic> map) {
+    return Debit(
+      id: map['id'],
+      personName: map['personName'],
+      amount: map['amount'],
+      date: DateTime.parse(map['date']),
+      returnDate: DateTime.parse(map['returnDate']),
+      isFromMe: (map['isFromMe'] as int? ?? 0) == 1,
+      isPaid: (map['isPaid'] as int? ?? 0) == 1,
+      hasAlarm: (map['hasAlarm'] as int? ?? 0) == 1,
+    );
+  }
+}
+
+class AppSetting {
+  final String key;
+  final String value;
+
+  AppSetting({required this.key, required this.value});
+
+  Map<String, dynamic> toMap() {
+    return {
+      'key': key,
+      'value': value,
+    };
+  }
+
+  factory AppSetting.fromMap(Map<String, dynamic> map) {
+    return AppSetting(
+      key: map['key'],
+      value: map['value'],
+    );
+  }
+}
+

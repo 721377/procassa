@@ -4,6 +4,7 @@ import 'dart:developer';
 import '../models.dart';
 import '../services/database_service.dart';
 import '../services/printing_service.dart';
+import '../services/currency_service.dart';
 
 class TransazioniScreen extends StatefulWidget {
   final bool? initialIsReturn;
@@ -256,7 +257,7 @@ class _TransazioniScreenState extends State<TransazioniScreen> {
                   children: [
                     _buildStatCard(
                       'Totale',
-                      '€${totalAmount.toStringAsFixed(2)}',
+                      '${CurrencyService().currency}${totalAmount.toStringAsFixed(2)}',
                       Icons.euro_rounded,
                       const Color(0xFF10B981),
                       isSelected: _selectedIsReturn == null,
@@ -812,7 +813,7 @@ class _TransazioniScreenState extends State<TransazioniScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '€${transaction.total.toStringAsFixed(2)}',
+                    '${CurrencyService().currency}${transaction.total.toStringAsFixed(2)}',
                     style: TextStyle(
                       fontSize: isSmallScreen ? 16 : 18,
                       fontWeight: FontWeight.w700,
@@ -1033,7 +1034,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      '€${item.price.toStringAsFixed(2)} × ${item.quantity}',
+                                      '${CurrencyService().currency}${item.price.toStringAsFixed(2)} × ${item.quantity}',
                                       style: TextStyle(
                                         fontSize: isSmallScreen ? 12 : 13,
                                         color: const Color(0xFF64748B),
@@ -1058,7 +1059,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   Text(
-                                    '€${item.total.toStringAsFixed(2)}',
+                                    '${CurrencyService().currency}${item.total.toStringAsFixed(2)}',
                                     style: TextStyle(
                                       fontSize: isSmallScreen ? 13 : 14,
                                       fontWeight: FontWeight.w700,
@@ -1067,7 +1068,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                                   ),
                                   if (item.discount > 0)
                                     Text(
-                                      '€${(item.price * item.quantity).toStringAsFixed(2)}',
+                                      '${CurrencyService().currency}${(item.price * item.quantity).toStringAsFixed(2)}',
                                       style: TextStyle(
                                         fontSize: isSmallScreen ? 10 : 11,
                                         decoration: TextDecoration.lineThrough,
@@ -1106,7 +1107,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                                 ),
                               ),
                               Text(
-                                '€${transaction.items.fold(0.0, (sum, item) => sum + item.total).toStringAsFixed(2)}',
+                                '${CurrencyService().currency}${transaction.items.fold(0.0, (sum, item) => sum + item.total).toStringAsFixed(2)}',
                                 style: TextStyle(
                                   fontSize: isSmallScreen ? 13 : 14,
                                   color: const Color(0xFF0F172A),
@@ -1127,7 +1128,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                                 ),
                               ),
                               Text(
-                                '-€${(transaction.items.fold(0.0, (sum, item) => sum + item.total) - transaction.total).toStringAsFixed(2)}',
+                                '-${CurrencyService().currency}${(transaction.items.fold(0.0, (sum, item) => sum + item.total) - transaction.total).toStringAsFixed(2)}',
                                 style: const TextStyle(
                                   fontSize: 14,
                                   color: Color(0xFF10B981),
@@ -1150,7 +1151,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                               ),
                             ),
                             Text(
-                              '€${transaction.total.toStringAsFixed(2)}',
+                              '${CurrencyService().currency}${transaction.total.toStringAsFixed(2)}',
                               style: TextStyle(
                                 fontSize: isSmallScreen ? 18 : 20,
                                 fontWeight: FontWeight.w800,
@@ -1351,7 +1352,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                     ),
                   ),
                   Text(
-                    '€${transaction.total.toStringAsFixed(2)}',
+                    '${CurrencyService().currency}${transaction.total.toStringAsFixed(2)}',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -1410,14 +1411,18 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
     try {
       final printingService = PrintingService();
+      final dbService = DatabaseService();
       
       final refundItems = transaction.items
           .map((item) => {
             'name': item.productName,
             'price': item.price,
             'quantity': item.quantity,
+            'ivaCode': item.ivaCode,
           })
           .toList();
+      
+      final printer = await dbService.getEpsonReceiptPrinter();
       
       final responseBody = await printingService.printRefundReceipt(
         zRepNumber: transaction.zRepNumber ?? '',
@@ -1431,7 +1436,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
       if (mounted) {
         if (responseBody != null && responseBody.isNotEmpty) {
-          await _handleRefundSuccess(responseBody);
+          await _handleRefundSuccess(responseBody, printer?.receiptPrinterType);
         } else {
           _showRefundErrorDialog('Errore nella stampa del reso');
         }
@@ -1447,35 +1452,58 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     }
   }
 
-  Future<void> _handleRefundSuccess(String responseBody) async {
+  Future<void> _handleRefundSuccess(String responseBody, String? printerType) async {
     try {
-      final printerStatus = _extractPrinterStatus(responseBody);
-      
-      if (printerStatus != null) {
-        final statusSegments = _decodePrinterStatus(printerStatus);
-        final printerState = statusSegments['printer'] ?? '';
-        
-        if (printerState.toLowerCase().contains('ok')) {
-          // Update local transaction
-          transaction.status = 1;
-          
-          // Update in database
-          if (transaction.id != null) {
-            final dbService = DatabaseService();
-            await dbService.updateTransactionStatus(transaction.id!, 1);
+      bool success = false;
+
+      switch (printerType) {
+        case 'Epson':
+          final printerStatus = _extractPrinterStatus(responseBody);
+          if (printerStatus != null) {
+            final statusSegments = _decodePrinterStatus(printerStatus);
+            final printerState = statusSegments['printer'] ?? '';
+            success = printerState.toLowerCase().contains('ok');
+            if (!success) {
+              _showRefundErrorDialog('Stato stampante non OK: $printerState');
+              return;
+            }
+          } else {
+            _showRefundErrorDialog('Impossibile leggere lo stato della stampante');
+            return;
           }
-          
-          // Call the callback to refresh the list
-          widget.onRefundCompleted?.call();
-          
-          // Show success dialog and navigate back with true to indicate refresh
-          _showRefundSuccessDialog();
-          
-        } else {
-          _showRefundErrorDialog('Stato stampante non OK: $printerState');
+          break;
+
+        case 'RCH':
+          success = responseBody.isNotEmpty && 
+              !responseBody.toLowerCase().contains('error');
+          if (!success) {
+            _showRefundErrorDialog('Errore dalla stampante RCH');
+            return;
+          }
+          break;
+
+        case 'Custom':
+          success = _parseCustomPrinterResponse(responseBody);
+          if (!success) {
+            return;
+          }
+          break;
+
+        default:
+          _showRefundErrorDialog('Tipo stampante sconosciuto');
+          return;
+      }
+
+      if (success) {
+        transaction.status = 1;
+        
+        if (transaction.id != null) {
+          final dbService = DatabaseService();
+          await dbService.updateTransactionStatus(transaction.id!, 1);
         }
-      } else {
-        _showRefundErrorDialog('Impossibile leggere lo stato della stampante');
+        
+        widget.onRefundCompleted?.call();
+        _showRefundSuccessDialog();
       }
     } catch (e) {
       _showRefundErrorDialog('Errore nel processamento: $e');
@@ -1576,6 +1604,55 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     }
   }
 
+  bool _parseCustomPrinterResponse(String xmlResponse) {
+    try {
+      final successMatch = RegExp(r'success="([^"]*)"').firstMatch(xmlResponse);
+      if (successMatch == null) {
+        _showRefundErrorDialog('Impossibile leggere la risposta della stampante custom');
+        return false;
+      }
+
+      final success = successMatch.group(1) == 'true';
+      if (!success) {
+        final statusMatch = RegExp(r'<response[^>]*status="(\d+)"').firstMatch(xmlResponse);
+        final status = statusMatch?.group(1) ?? 'sconosciuto';
+        
+        String errorMessage = 'Errore dalla stampante custom';
+        switch (status) {
+          case '1':
+            errorMessage = 'Stampante non disponibile';
+            break;
+          case '2':
+            errorMessage = 'Comando non supportato';
+            break;
+          case '3':
+            errorMessage = 'Errore di sintassi nel comando';
+            break;
+          case '4':
+            errorMessage = 'Stampante in stato non valido';
+            break;
+          case '5':
+            errorMessage = 'Errore di esecuzione del comando';
+            break;
+          case '6':
+            errorMessage = 'Timeout della stampante';
+            break;
+          default:
+            errorMessage = 'Errore stampante (codice: $status)';
+        }
+        
+        _showRefundErrorDialog(errorMessage);
+        return false;
+      }
+      
+      return true;
+    } catch (e) {
+      log('Error parsing custom printer response: $e');
+      _showRefundErrorDialog('Errore nella lettura della risposta della stampante');
+      return false;
+    }
+  }
+
   void _showRefundSuccessDialog() {
     showDialog(
       context: context,
@@ -1612,7 +1689,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                '€${transaction.total.toStringAsFixed(2)}',
+                '${CurrencyService().currency}${transaction.total.toStringAsFixed(2)}',
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w800,

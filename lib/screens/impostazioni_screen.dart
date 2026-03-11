@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:procassa/main.dart';
+import 'package:procassa/services/currency_service.dart';
 import 'package:procassa/services/database_service.dart';
 import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -16,15 +18,32 @@ class _ImpostazioniScreenState extends State<ImpostazioniScreen> {
   bool _vibrazioni = true;
   bool _salvataggioAutomatico = true;
   String _tema = 'chiaro';
-  String _lingua = 'italiano';
+  String _lingua = 'en';
+  String _valuta = '€';
   String _appVersion = '';
   Map<String, dynamic>? _agencyInfo;
 
   @override
   void initState() {
     super.initState();
+    _loadSettings();
     _loadAgencyInfo();
     _loadAppVersion();
+  }
+
+  Future<void> _loadSettings() async {
+    final lang = await DatabaseService().getSetting('language');
+    final curr = await DatabaseService().getSetting('currency');
+    if (mounted) {
+      setState(() {
+        if (lang != null && ['en', 'fr', 'ar'].contains(lang)) {
+          _lingua = lang;
+        } else {
+          _lingua = 'en';
+        }
+        if (curr != null) _valuta = curr;
+      });
+    }
   }
 
   Future<void> _loadAppVersion() async {
@@ -60,6 +79,7 @@ class _ImpostazioniScreenState extends State<ImpostazioniScreen> {
       body: ListView(
         padding: const EdgeInsets.only(bottom: 32),
         children: [
+          /*
           _buildSectionHeader(
             icon: Icons.notifications_outlined,
             title: 'Notifiche',
@@ -91,6 +111,7 @@ class _ImpostazioniScreenState extends State<ImpostazioniScreen> {
               activeColor: const Color(0xFF2D6FF1),
             ),
           ),
+          */
           const SizedBox(height: 8),
           
           _buildSectionHeader(
@@ -179,7 +200,7 @@ class _ImpostazioniScreenState extends State<ImpostazioniScreen> {
           ),
           _buildSettingItem(
             title: 'Lingua',
-            subtitle: _lingua.capitalize(),
+            subtitle: _lingua == 'en' ? 'English' : (_lingua == 'fr' ? 'Français' : 'العربية'),
             trailing: SizedBox(
               width: 130,
               child: DropdownButton<String>(
@@ -188,21 +209,53 @@ class _ImpostazioniScreenState extends State<ImpostazioniScreen> {
                 underline: const SizedBox(),
                 items: const [
                   DropdownMenuItem(
-                    value: 'italiano',
-                    child: Text('Italiano'),
+                    value: 'en',
+                    child: Text('English'),
                   ),
                   DropdownMenuItem(
-                    value: 'inglese',
-                    child: Text('Inglese'),
+                    value: 'fr',
+                    child: Text('Français'),
                   ),
                   DropdownMenuItem(
-                    value: 'francese',
-                    child: Text('Francese'),
+                    value: 'ar',
+                    child: Text('العربية'),
                   ),
                 ],
-                onChanged: (value) {
+                onChanged: (value) async {
                   if (value != null) {
                     setState(() => _lingua = value);
+                    await DatabaseService().saveSetting('language', value);
+                    if (mounted) {
+                      MyApp.setLocale(context, Locale(value));
+                    }
+                  }
+                },
+              ),
+            ),
+          ),
+          _buildSettingItem(
+            title: 'Valuta',
+            subtitle: _valuta,
+            trailing: SizedBox(
+              width: 130,
+              child: DropdownButton<String>(
+                value: _valuta,
+                isExpanded: true,
+                underline: const SizedBox(),
+                items: const [
+                  DropdownMenuItem(
+                    value: '€',
+                    child: Text('Euro (€)'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'DH',
+                    child: Text('Dirham (DH)'),
+                  ),
+                ],
+                onChanged: (value) async {
+                  if (value != null) {
+                    setState(() => _valuta = value);
+                    await CurrencyService().setCurrency(value);
                   }
                 },
               ),

@@ -58,15 +58,52 @@ class PaymentService {
         if (successAttr == 'true') {
           final addInfo = customResponse.findElements('addInfo').firstOrNull;
           if (addInfo != null) {
-            final fpStatus = addInfo.findElements('fpStatus').firstOrNull?.innerText;
-            final printerStatus = addInfo.findElements('printerStatus').firstOrNull?.innerText;
-            
-            if (printerStatus != null) {
+            // Extract custom printer fields from addInfo
+            final printerStatus = addInfo.findElements('printerStatus').firstOrNull?.innerText.trim();
+            if (printerStatus != null && printerStatus.isNotEmpty) {
               result['printerStatus'] = printerStatus;
-              // Map Custom status to existing decoder if compatible or handle separately
-              // result['statusSegments'] = _decodeCustomStatus(printerStatus);
+            }
+
+            // fiscalDoc is the custom printer's equivalent of fiscalReceiptNumber
+            final fiscalDoc = addInfo.findElements('fiscalDoc').firstOrNull?.innerText.trim();
+            if (fiscalDoc != null && fiscalDoc.isNotEmpty) {
+              result['fiscalReceiptNumber'] = fiscalDoc;
+            }
+
+            // dateTime is the custom printer's equivalent of receiptISODateTime
+            final dateTime = addInfo.findElements('dateTime').firstOrNull?.innerText.trim();
+            if (dateTime != null && dateTime.isNotEmpty) {
+              result['receiptISODateTime'] = dateTime;
+            }
+
+            // nClose is the custom printer's equivalent of zRepNumber (Z report number)
+            final nClose = addInfo.findElements('nClose').firstOrNull?.innerText.trim();
+            if (nClose != null && nClose.isNotEmpty) {
+              result['zRepNumber'] = nClose;
             }
           }
+          
+          // Also check for standard Epson-style fields in case custom printer returns them
+          final fiscalReceiptNumber = customResponse.findElements('fiscalReceiptNumber').firstOrNull?.innerText.trim();
+          if (fiscalReceiptNumber != null && fiscalReceiptNumber.isNotEmpty && result['fiscalReceiptNumber'] == null) {
+            result['fiscalReceiptNumber'] = fiscalReceiptNumber;
+          }
+          
+          final receiptISODateTime = customResponse.findElements('receiptISODateTime').firstOrNull?.innerText.trim();
+          if (receiptISODateTime != null && receiptISODateTime.isNotEmpty && result['receiptISODateTime'] == null) {
+            result['receiptISODateTime'] = receiptISODateTime;
+          }
+          
+          final zRepNumber = customResponse.findElements('zRepNumber').firstOrNull?.innerText.trim();
+          if (zRepNumber != null && zRepNumber.isNotEmpty && result['zRepNumber'] == null) {
+            result['zRepNumber'] = zRepNumber;
+          }
+          
+          final serialNumber = customResponse.findElements('serialNumber').firstOrNull?.innerText.trim();
+          if (serialNumber != null && serialNumber.isNotEmpty) {
+            result['serialNumber'] = serialNumber;
+          }
+          
           return result;
         }
       }

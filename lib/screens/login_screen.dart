@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:procassa/main.dart';
 import 'package:procassa/screens/pos_screen.dart';
 import 'package:procassa/screens/registration_screen.dart';
 import 'package:procassa/services/database_service.dart';
 import 'package:procassa/services/subscription_service.dart';
 import 'package:procassa/services/new_version_checker.dart';
+import 'package:procassa/l10n/app_localizations.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -212,14 +214,33 @@ class _LoginScreenState extends State<LoginScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'ProCassa',
-                      style: GoogleFonts.poppins(
-                        fontSize: 36,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                        height: 1.1,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'ProCassa',
+                          style: GoogleFonts.poppins(
+                            fontSize: 36,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            height: 1.1,
+                          ),
+                        ),
+                        PopupMenuButton<Locale>(
+                          icon: const Icon(Icons.language, color: Colors.white),
+                          onSelected: (Locale locale) async {
+                            await DatabaseService().saveSetting('language', locale.languageCode);
+                            if (mounted) {
+                              MyApp.setLocale(context, locale);
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(value: Locale('en'), child: Text('English')),
+                            const PopupMenuItem(value: Locale('fr'), child: Text('Français')),
+                            const PopupMenuItem(value: Locale('ar'), child: Text('العربية')),
+                          ],
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -980,6 +1001,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // Shared Login Form
   Widget _buildLoginForm({bool isExtraSmall = false}) {
+    final l10n = AppLocalizations.of(context)!;
     return Form(
       key: _formKey,
       child: Column(
@@ -987,7 +1009,7 @@ class _LoginScreenState extends State<LoginScreen> {
         children: [
           // Form Title
           Text(
-            'Accedi',
+            l10n.login,
             style: GoogleFonts.poppins(
               fontSize: isExtraSmall ? 22 : 24,
               fontWeight: FontWeight.w600,
@@ -1015,7 +1037,7 @@ class _LoginScreenState extends State<LoginScreen> {
               fontWeight: FontWeight.w400,
             ),
             decoration: InputDecoration(
-              hintText: 'Nome utente',
+              hintText: l10n.username,
               hintStyle: GoogleFonts.inter(
                 color: textTertiary,
                 fontWeight: FontWeight.w400,
@@ -1057,7 +1079,7 @@ class _LoginScreenState extends State<LoginScreen> {
               fontWeight: FontWeight.w400,
             ),
             decoration: InputDecoration(
-              hintText: 'Password',
+              hintText: l10n.password,
               hintStyle: GoogleFonts.inter(
                 color: textTertiary,
                 fontWeight: FontWeight.w400,
@@ -1174,7 +1196,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     )
                   : Text(
-                      'Accedi al sistema',
+                      l10n.login,
                       style: GoogleFonts.inter(
                         fontSize: isExtraSmall ? 15 : 16,
                         fontWeight: FontWeight.w600,

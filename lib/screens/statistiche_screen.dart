@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'transazioni_screen.dart';
+import '../services/currency_service.dart';
 
 class StatisticheScreen extends StatelessWidget {
   const StatisticheScreen({super.key});
@@ -101,7 +102,7 @@ class StatisticheScreen extends StatelessWidget {
               children: [
                 _buildStatCard(
                   title: 'Totale Vendite',
-                  value: '€2,450.50',
+                  value: '${CurrencyService().currency}2,450.50',
                   change: '+12.5%',
                   icon: Icons.euro_rounded,
                   color: const Color(0xFF10B981),
@@ -133,7 +134,7 @@ class StatisticheScreen extends StatelessWidget {
                 ),
                 _buildStatCard(
                   title: 'Sconti',
-                  value: '€124.00',
+                  value: '${CurrencyService().currency}124.00',
                   change: '+5.2%',
                   icon: Icons.percent_rounded,
                   color: const Color(0xFFF59E0B),
@@ -157,7 +158,7 @@ class StatisticheScreen extends StatelessWidget {
                 ),
                 _buildStatCard(
                   title: 'Scontrino Medio',
-                  value: '€17.26',
+                  value: '${CurrencyService().currency}17.26',
                   change: '+4.3%',
                   icon: Icons.receipt_long_rounded,
                   color: const Color(0xFF8B5CF6),
@@ -249,7 +250,7 @@ class StatisticheScreen extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            '€3,845.20',
+                            '${CurrencyService().currency}3,845.20',
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -468,28 +469,28 @@ List<Widget> _buildTopProducts() {
     {
       'name': 'Espresso',
       'quantity': 45,
-      'revenue': '€90.00',
+      'revenue': '${CurrencyService().currency}90.00',
       'growth': '+12%',
       'color': const Color(0xFF3B82F6),
     },
     {
       'name': 'Cappuccino',
       'quantity': 38,
-      'revenue': '€152.00',
+      'revenue': '${CurrencyService().currency}152.00',
       'growth': '+8%',
       'color': const Color(0xFF10B981),
     },
     {
       'name': 'Butter Croissant',
       'quantity': 32,
-      'revenue': '€96.00',
+      'revenue': '${CurrencyService().currency}96.00',
       'growth': '+15%',
       'color': const Color(0xFF8B5CF6),
     },
     {
       'name': 'Chocolate Muffin',
       'quantity': 28,
-      'revenue': '€112.00',
+      'revenue': '${CurrencyService().currency}112.00',
       'growth': '+5%',
       'color': const Color(0xFFF59E0B),
     },
@@ -607,21 +608,21 @@ List<Widget> _buildTopProducts() {
       {
         'name': 'Contanti',
         'icon': Icons.money_rounded,
-        'amount': '€1,230.45',
+        'amount': '${CurrencyService().currency}1,230.45',
         'percentage': 50,
         'color': const Color(0xFF10B981),
       },
       {
         'name': 'Carta di Credito',
         'icon': Icons.credit_card_rounded,
-        'amount': '€982.30',
+        'amount': '${CurrencyService().currency}982.30',
         'percentage': 40,
         'color': const Color(0xFF3B82F6),
       },
       {
         'name': 'Altri Metodi',
         'icon': Icons.more_horiz_rounded,
-        'amount': '€237.75',
+        'amount': '${CurrencyService().currency}237.75',
         'percentage': 10,
         'color': const Color(0xFF8B5CF6),
       },

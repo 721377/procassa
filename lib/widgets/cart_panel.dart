@@ -4,6 +4,7 @@ import '../services/printing_service.dart';
 import '../services/database_service.dart';
 import '../services/payment_service.dart';
 import '../services/iva_handler.dart';
+import '../services/currency_service.dart';
 import 'numeric_keyboard.dart';
 
 class CartPanel extends StatefulWidget {
@@ -427,7 +428,7 @@ class _CartPanelState extends State<CartPanel> {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
-                                    'Valore Fisso (€)',
+                                    'Valore Fisso (${CurrencyService().currency})',
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: !isPercentage
@@ -476,10 +477,10 @@ class _CartPanelState extends State<CartPanel> {
                                   discountValue.isEmpty
                                       ? isPercentage
                                           ? '0%'
-                                          : '0€'
+                                          : '0${CurrencyService().currency}'
                                       : isPercentage
                                           ? '$discountValue%'
-                                          : '${double.tryParse(discountValue)?.toStringAsFixed(2) ?? "0.00"}€',
+                                          : '${double.tryParse(discountValue)?.toStringAsFixed(2) ?? "0.00"}${CurrencyService().currency}',
                                   style: const TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.w700,
@@ -497,7 +498,7 @@ class _CartPanelState extends State<CartPanel> {
                                       children: [
                                         Text(
                                           isPercentage
-                                              ? '${discountAmount.toStringAsFixed(2)}€'
+                                              ? '${discountAmount.toStringAsFixed(2)}${CurrencyService().currency}'
                                               : '${(currentDiscount / original * 100).toStringAsFixed(1)}%',
                                           style: TextStyle(
                                             fontSize: 11,
@@ -507,7 +508,7 @@ class _CartPanelState extends State<CartPanel> {
                                         ),
                                         const SizedBox(width: 8),
                                         Text(
-                                          'Final: ${finalAmount.toStringAsFixed(2)}€',
+                                          'Final: ${finalAmount.toStringAsFixed(2)}${CurrencyService().currency}',
                                           style: TextStyle(
                                             fontSize: 11,
                                             color: Colors.green.shade700,
@@ -739,121 +740,127 @@ class _CartPanelState extends State<CartPanel> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: backgroundColor,
-        border: Border(
-          left: BorderSide(color: borderColor, width: 1),
-        ),
-      ),
-      child: Column(
-        children: [
-          // Minimalist header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: const BoxDecoration(
-              color: surfaceColor,
-              border: Border(bottom: BorderSide(color: borderColor, width: 1)),
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(18),
-                bottomRight: Radius.circular(18),
-              ),
+    return ListenableBuilder(
+      listenable: CurrencyService(),
+      builder: (context, child) {
+        final symbol = CurrencyService().currency;
+        return Container(
+          decoration: const BoxDecoration(
+            color: backgroundColor,
+            border: Border(
+              left: BorderSide(color: borderColor, width: 1),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
+          ),
+          child: Column(
+            children: [
+              // Minimalist header
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: const BoxDecoration(
+                  color: surfaceColor,
+                  border: Border(bottom: BorderSide(color: borderColor, width: 1)),
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(18),
+                    bottomRight: Radius.circular(18),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Back button for mobile
-                    if (widget.onCloseCart != null)
-                      Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        child: IconButton(
-                          onPressed: widget.onCloseCart,
-                          icon: const Icon(Icons.arrow_back_rounded),
-                          style: IconButton.styleFrom(
-                            backgroundColor: hoverColor,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            padding: const EdgeInsets.all(6),
-                          ),
-                          iconSize: 18,
-                        ),
-                      ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Row(
                       children: [
-                        const Text(
-                          'Carrello',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: textPrimary,
+                        // Back button for mobile
+                        if (widget.onCloseCart != null)
+                          Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            child: IconButton(
+                              onPressed: widget.onCloseCart,
+                              icon: const Icon(Icons.arrow_back_rounded),
+                              style: IconButton.styleFrom(
+                                backgroundColor: hoverColor,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                padding: const EdgeInsets.all(6),
+                              ),
+                              iconSize: 18,
+                            ),
                           ),
-                        ),
-                        Text(
-                          '${widget.totalItems} articol${widget.totalItems != 1 ? 'i' : 'o'}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: textSecondary,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Carrello',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: textPrimary,
+                              ),
+                            ),
+                            Text(
+                              '${widget.totalItems} articol${widget.totalItems != 1 ? 'i' : 'o'}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
+                    // Clear cart button
+                    if (widget.cartItems.isNotEmpty)
+                      IconButton(
+                        onPressed: () => _showClearCartDialog(),
+                        icon: const Icon(Icons.delete_outline_rounded),
+                        style: IconButton.styleFrom(
+                          backgroundColor: dangerColor.withOpacity(0.1),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.all(8),
+                          foregroundColor: dangerColor,
+                        ),
+                        iconSize: 18,
+                      ),
                   ],
                 ),
-                // Clear cart button
-                if (widget.cartItems.isNotEmpty)
-                  IconButton(
-                    onPressed: () => _showClearCartDialog(),
-                    icon: const Icon(Icons.delete_outline_rounded),
-                    style: IconButton.styleFrom(
-                      backgroundColor: dangerColor.withOpacity(0.1),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      padding: const EdgeInsets.all(8),
-                      foregroundColor: dangerColor,
-                    ),
-                    iconSize: 18,
+              ),
+
+              // Cart content
+              Expanded(
+                child: widget.cartItems.isEmpty
+                    ? _buildEmptyState()
+                    : _buildCartItems(),
+              ),
+
+              // Keypad (Bottom - for wide screens)
+              if (_isWideScreen)
+                Container(
+                  height: 340, // Reduced from 420 to optimize space
+                  decoration: const BoxDecoration(
+                    border: Border(top: BorderSide(color: borderColor, width: 1)),
                   ),
-              ],
-            ),
+                  child: NumericKeypad(
+                    onNumberTap: widget.onNumberTap,
+                    onClear: widget.onClear,
+                    onBackspace: widget.onBackspace,
+                    onXTap: widget.onXTap,
+                    onPayment: () => _processPayment(widget.totalAmount),
+                    onPreAccount: widget.onPrint,
+                    totalAmount: widget.totalAmount,
+                    totalDiscount: widget.totalDiscount,
+                    selectedPaymentMethod:
+                        (widget.cartItems.isEmpty) ? null : _selectedPaymentMethod,
+                    onShowPaymentModal: () => _showPaymentMethodModal(context),
+                    onTotalLongPress: () => _showDiscountModal(isTotal: true),
+                  ),
+                ),
+            ],
           ),
-
-          // Cart content
-          Expanded(
-            child: widget.cartItems.isEmpty
-                ? _buildEmptyState()
-                : _buildCartItems(),
-          ),
-
-          // Keypad (Bottom - for wide screens)
-          if (_isWideScreen)
-            Container(
-              height: 340, // Reduced from 420 to optimize space
-              decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: borderColor, width: 1)),
-              ),
-              child: NumericKeypad(
-                onNumberTap: widget.onNumberTap,
-                onClear: widget.onClear,
-                onBackspace: widget.onBackspace,
-                onXTap: widget.onXTap,
-                onPayment: () => _processPayment(widget.totalAmount),
-                onPreAccount: widget.onPrint,
-                totalAmount: widget.totalAmount,
-                totalDiscount: widget.totalDiscount,
-                selectedPaymentMethod:
-                    (widget.cartItems.isEmpty) ? null : _selectedPaymentMethod,
-                onShowPaymentModal: () => _showPaymentMethodModal(context),
-                onTotalLongPress: () => _showDiscountModal(isTotal: true),
-              ),
-            ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -1414,7 +1421,7 @@ class _CartPanelState extends State<CartPanel> {
                               ),
                             ),
                             Text(
-                              '€${baseTotal.toStringAsFixed(2)}',
+                              '${CurrencyService().currency}${baseTotal.toStringAsFixed(2)}',
                               style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
@@ -1456,7 +1463,7 @@ class _CartPanelState extends State<CartPanel> {
                               ),
                             ),
                             Text(
-                              '- €${(baseTotal - total).toStringAsFixed(2)}',
+                              '- ${CurrencyService().currency}${(baseTotal - total).toStringAsFixed(2)}',
                               style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -1479,7 +1486,7 @@ class _CartPanelState extends State<CartPanel> {
                             ),
                           ),
                           Text(
-                            '€${total.toStringAsFixed(2)}',
+                            '${CurrencyService().currency}${total.toStringAsFixed(2)}',
                             style: const TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.w800,
@@ -2247,7 +2254,7 @@ class _CartPanelState extends State<CartPanel> {
                     child: Column(
                       children: [
                         Text(
-                          '€${total.toStringAsFixed(2)}',
+                          '${CurrencyService().currency}${total.toStringAsFixed(2)}',
                           style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
@@ -2461,7 +2468,7 @@ class CartItemTile extends StatelessWidget {
                           child: Text(
                             item.discount > 0
                                 ? '-${item.discount.toStringAsFixed(0)}%'
-                                : '-€${item.discount.abs().toStringAsFixed(2)}',
+                                : '-${CurrencyService().currency}${item.discount.abs().toStringAsFixed(2)}',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -2471,7 +2478,7 @@ class CartItemTile extends StatelessWidget {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          '€${(item.product.price * item.quantity).toStringAsFixed(2)}',
+                          '${CurrencyService().currency}${(item.product.price * item.quantity).toStringAsFixed(2)}',
                           style: TextStyle(
                             fontSize: 11,
                             decoration: TextDecoration.lineThrough,
@@ -2492,7 +2499,7 @@ class CartItemTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '€${item.total.toStringAsFixed(2)}',
+                '${CurrencyService().currency}${item.total.toStringAsFixed(2)}',
                 style: TextStyle(
                   fontSize: isPhone ? 15 : 18,
                   fontWeight: FontWeight.w700,

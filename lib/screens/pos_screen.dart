@@ -1,6 +1,7 @@
 // screens/pos_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:procassa/l10n/app_localizations.dart';
 import 'dart:ui' as ui;
 import 'dart:async';
 import 'package:procassa/screens/statistiche_screen.dart';
@@ -14,10 +15,12 @@ import '../services/database_service.dart';
 import '../services/printing_service.dart';
 import '../services/payment_service.dart';
 import '../services/subscription_service.dart';
+import '../services/currency_service.dart';
 import 'stampanti_screen.dart';
 import 'impostazioni_screen.dart';
 import 'anagrafica_screen.dart';
 import 'articoli_screen.dart';
+import 'debit_screen.dart';
 
 class PosScreen extends StatefulWidget {
   const PosScreen({super.key});
@@ -515,7 +518,7 @@ class _PosScreenState extends State<PosScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                '€ ${data['dailyAmount'] ?? '0,00'}',
+                '${CurrencyService().currency} ${data['dailyAmount'] ?? '0,00'}',
                 style: const TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.w800,
@@ -1321,7 +1324,7 @@ class _PosScreenState extends State<PosScreen> {
                       child: Column(
                         children: [
                           Text(
-                            '€${total.toStringAsFixed(2)}',
+                            '${CurrencyService().currency}${total.toStringAsFixed(2)}',
                             style: const TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.w800,
@@ -1805,6 +1808,7 @@ class _PosScreenState extends State<PosScreen> {
   }
 
   Widget _buildDrawer() {
+    final l10n = AppLocalizations.of(context)!;
     return Drawer(
       backgroundColor: Colors.white,
       elevation: 0,
@@ -1828,9 +1832,9 @@ class _PosScreenState extends State<PosScreen> {
                     ),
                   ),
                   // const SizedBox(width: 4),
-                  const Text(
-                    'Procassa',
-                    style: TextStyle(
+                  Text(
+                    l10n.appTitle,
+                    style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF1A1A1A),
@@ -1854,7 +1858,7 @@ class _PosScreenState extends State<PosScreen> {
                   ),
                   _buildDrawerItem(
                     icon: Icons.inventory_2_outlined,
-                    text: 'Anagrafica',
+                    text: l10n.articles,
                     selected: _selectedMenu == 'articoli',
                     onTap: () {
                       Navigator.pop(context);
@@ -1876,7 +1880,7 @@ class _PosScreenState extends State<PosScreen> {
                   ),
                   _buildDrawerItem(
                     icon: Icons.print_outlined,
-                    text: 'Gestione Stampanti',
+                    text: l10n.printers,
                     selected: _selectedMenu == 'stampante',
                     onTap: () {
                       Navigator.pop(context);
@@ -1909,13 +1913,26 @@ class _PosScreenState extends State<PosScreen> {
                       );
                     },
                   ),
+                  _buildDrawerItem(
+                    icon: Icons.account_balance_wallet_outlined,
+                    text: l10n.debits,
+                    selected: _selectedMenu == 'debiti',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const DebitScreen()),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
             const Divider(indent: 24, endIndent: 24),
             _buildDrawerItem(
               icon: Icons.settings_outlined,
-              text: 'Impostazioni',
+              text: l10n.settings,
               selected: _selectedMenu == 'impostazioni',
               onTap: () {
                 Navigator.pop(context);
@@ -2281,13 +2298,14 @@ class _PosScreenState extends State<PosScreen> {
 
                       String? selectedPrice;
                       if (_keypadFirstNumber.isNotEmpty) {
+                        final symbol = CurrencyService().currency;
                         if (_keypadXPressed && _keypadSecondNumber.isNotEmpty) {
                           selectedPrice =
-                              'Qtà: $_keypadFirstNumber • €$_keypadSecondNumber';
+                              'Qtà: $_keypadFirstNumber • $symbol$_keypadSecondNumber';
                         } else if (_keypadXPressed) {
                           selectedPrice = 'Qtà: $_keypadFirstNumber';
                         } else {
-                          selectedPrice = '€$_keypadFirstNumber';
+                          selectedPrice = '$symbol$_keypadFirstNumber';
                         }
                       }
 

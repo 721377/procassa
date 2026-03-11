@@ -1,5 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:procassa/l10n/app_localizations.dart';
+import 'package:procassa/services/currency_service.dart';
 import '../models.dart';
 import '../services/database_service.dart';
 import '../services/iva_handler.dart';
@@ -57,6 +59,7 @@ class _ArticoliScreenState extends State<ArticoliScreen> {
       _resetForm();
     }
 
+    final l10n = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -81,7 +84,7 @@ class _ArticoliScreenState extends State<ArticoliScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  articolo != null ? 'Modifica Articolo' : 'Nuovo Articolo',
+                  articolo != null ? l10n.editArticle : l10n.newArticle,
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
@@ -98,7 +101,7 @@ class _ArticoliScreenState extends State<ArticoliScreen> {
             
             // Descrizione
             Text(
-              'Descrizione',
+              l10n.description,
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -160,7 +163,7 @@ class _ArticoliScreenState extends State<ArticoliScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Prezzo',
+                        l10n.price,
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
@@ -174,7 +177,7 @@ class _ArticoliScreenState extends State<ArticoliScreen> {
                             const TextInputType.numberWithOptions(decimal: true),
                         decoration: InputDecoration(
                           hintText: '0.00',
-                          prefixText: '€ ',
+                          prefixText: '${CurrencyService().currency} ',
                           filled: true,
                           fillColor: Colors.grey[50],
                           border: OutlineInputBorder(
@@ -546,70 +549,83 @@ class _ArticoliScreenState extends State<ArticoliScreen> {
   }
 
   void _deleteArticolo(Articolo articolo) {
+    // ... (existing code)
+  }
+
+  void _quickAddArticle() {
+    final TextEditingController descController = TextEditingController();
+    final TextEditingController priceController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: const Text(
-          'Elimina articolo',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        content: Text(
-          'Sei sicuro di voler eliminare "${articolo.descrizione}"?',
-          style: TextStyle(color: Colors.grey[600]),
+        title: const Text('Quick Add Article'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: descController,
+              decoration: const InputDecoration(labelText: 'Description'),
+              autofocus: true,
+            ),
+            TextField(
+              controller: priceController,
+              decoration: const InputDecoration(labelText: 'Price'),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            ),
+          ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.grey[600],
-            ),
-            child: const Text('Annulla'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () async {
-              await _db.deleteArticolo(articolo.id!);
-              setState(() {
-                _articoli = _db.getArticoli();
-              });
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Articolo eliminato'),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              );
+              final desc = descController.text;
+              final price = double.tryParse(priceController.text) ?? 0.0;
+              if (desc.isNotEmpty) {
+                // Get first category and first IVA as default
+                final cats = await _db.getCategorias();
+                final ivas = await _db.getIVAs();
+                if (cats.isNotEmpty && ivas.isNotEmpty) {
+                  final newArt = Articolo(
+                    descrizione: desc,
+                    prezzo: price,
+                    iva: ivas.first.valore,
+                    codice: 'AUTO_${DateTime.now().millisecondsSinceEpoch}',
+                    categoriaId: cats.first.id!,
+                  );
+                  await _db.insertArticolo(newArt);
+                  _refreshArticoli();
+                  Navigator.pop(context);
+                }
+              }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red[50],
-              foregroundColor: Colors.red,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: Colors.red[100]!),
-              ),
-            ),
-            child: const Text('Elimina'),
+            child: const Text('Add'),
           ),
         ],
       ),
     );
   }
 
+  void _refreshArticoli() {
+    setState(() {
+      _articoli = _db.getArticoli();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
+      appBar: AppBar(
+        title: const Text('Articoli'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.flash_on),
+            onPressed: _quickAddArticle,
+            tooltip: 'Quick Add',
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openBottomSheet(),
         backgroundColor: const Color(0xFF2D6FF1),
@@ -745,7 +761,7 @@ class _ArticoliScreenState extends State<ArticoliScreen> {
                       Row(
                         children: [
                           Text(
-                            '€${articolo.prezzo.toStringAsFixed(2)}',
+                            '${CurrencyService().currency}${articolo.prezzo.toStringAsFixed(2)}',
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,

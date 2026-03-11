@@ -14,6 +14,7 @@ import 'package:intl/intl.dart';
 import '../models.dart';
 import 'database_service.dart';
 import 'iva_handler.dart';
+import 'currency_service.dart';
 
 class PrintingService {
   final List<String> _devices = [];
@@ -120,8 +121,9 @@ String _buildPrintContent(
   buffer.writeln('\n-----------------------------------------------\n');
 
   // Subtotal / total
+  final symbol = CurrencyService().currency;
   buffer.writeln(
-    '\x1B\x21\x10 TOTALE:                   \x80${subtotal.toStringAsFixed(2)} \x1B\x21\x00'
+    '\x1B\x21\x10 TOTALE:                   $symbol${subtotal.toStringAsFixed(2)} \x1B\x21\x00'
   );
 
   buffer.writeln('-----------------------------------------------');
@@ -415,7 +417,7 @@ Future<void> _printCommandContent(
 
     final total = subtotal;
     await SunmiPrinter.printText(
-      'TOTALE:          €${total.toStringAsFixed(2)}',
+      'TOTALE:          ${CurrencyService().currency}${total.toStringAsFixed(2)}',
       style: SunmiTextStyle(
         align: SunmiPrintAlign.LEFT,
         bold: true,
@@ -529,23 +531,60 @@ Future<void> _printCommandContent(
     try {
       final printer = await _getEpsonReceiptPrinter();
       if (printer == null) {
-        log('Epson receipt printer not found for refund');
+        log('Receipt printer not found for refund');
         return null;
       }
 
-      final refundXml = _generateRefundXml(
-        zRepNumber: zRepNumber,
-        fiscalReceiptNumber: fiscalReceiptNumber,
-        receiptISODateTime: receiptISODateTime,
-        serialNumber: serialNumber,
-        refundItems: refundItems,
-        paymentMethod: paymentMethod,
-        justification: justification!,
-      );
-      print('Refund XML: $refundXml');
+      print('Printer type: ${printer.receiptPrinterType}');
+      print('Sending refund to printer type: ${printer.receiptPrinterType}');
 
-      log('Sending refund XML to Epson printer');
-      return await _sendXmlToEpsonPrinter(printer, refundXml);
+      switch (printer.receiptPrinterType) {
+        case 'Epson':
+          final refundXml = _generateRefundXml(
+            zRepNumber: zRepNumber,
+            fiscalReceiptNumber: fiscalReceiptNumber,
+            receiptISODateTime: receiptISODateTime,
+            serialNumber: serialNumber,
+            refundItems: refundItems,
+            paymentMethod: paymentMethod,
+            justification: justification!,
+          );
+          print('Refund XML (Epson): $refundXml');
+          log('Sending refund XML to Epson printer');
+          return await _sendXmlToEpsonPrinter(printer, refundXml);
+
+        case 'RCH':
+          final refundXml = _generateRCHRefundXml(
+            refundItems: refundItems,
+            paymentMethod: paymentMethod,
+          );
+          print('Refund XML (RCH): $refundXml');
+          log('Sending refund XML to RCH printer');
+          return await _sendXmlToRCHPrinter(printer, refundXml);
+
+        case 'Custom':
+          if (printer.tipoProtocollo == 'CustomXml') {
+            final xmlData = _generateCustomRefundXml(
+              fiscalReceiptNumber: fiscalReceiptNumber,
+              refundItems: refundItems,
+              paymentMethod: paymentMethod,
+            );
+            print('Refund XML (Custom): $xmlData');
+            log('Sending refund XML to Custom printer');
+            return await _sendXmlToCustomPrinter(printer, xmlData);
+          } else {
+            final refundXml = _generateRCHRefundXml(
+              refundItems: refundItems,
+              paymentMethod: paymentMethod,
+            );
+            log('Sending refund XML to Custom printer (RCH protocol)');
+            return await _sendXmlToRCHPrinter(printer, refundXml);
+          }
+
+        default:
+          log('Unsupported printer type for refund: ${printer.receiptPrinterType}');
+          return null;
+      }
     } catch (e) {
       log('Error printing refund receipt: $e');
       return null;
@@ -931,7 +970,77 @@ Future<void> _printCommandContent(
     return serviceBuffer.toString();
   }
 
+  String _generateRCHRefundXml({
+    required List<Map<String, dynamic>> refundItems,
+    required String paymentMethod,
+  }) {
+    final StringBuffer itemsBuffer = StringBuffer();
+    double totalRefund = 0;
+
+    final ivaMapping = {
+      '04': {'department': 3, 'rate': 4.0},
+      '05': {'department': 4, 'rate': 5.0},
+      '10': {'department': 2, 'rate': 10.0},
+      '22': {'department': 1, 'rate': 22.0},
+    };
+
+    for (final item in refundItems) {
+      final name = item['name'] as String? ?? 'Item';
+      final price = (item['price'] as num?)?.toDouble() ?? 0.0;
+      final quantity = (item['quantity'] as num?)?.toDouble() ?? 1.0;
+      final ivaCode = item['ivaCode'] as String?;
+
+      int department = 1;
+      if (ivaCode != null && ivaMapping.containsKey(ivaCode)) {
+        department = ivaMapping[ivaCode]!['department'] as int;
+      }
+
+      final priceInCents = (price * 100).toInt();
+      final quantityParam = quantity > 1 ? '/*$quantity' : '';
+      final escapedDesc = _escapeRCHDescription(name);
+
+      itemsBuffer.writeln('<cmd>=X$department/\$$priceInCents$quantityParam/($escapedDesc)</cmd>');
+      totalRefund += price * quantity;
+    }
+
+    String paymentXml;
+    if (paymentMethod != null) {
+      switch (paymentMethod.toUpperCase()) {
+        case 'CARTA':
+        case 'SATISPAY':
+        case 'POS':
+          paymentXml = '<cmd>=T4</cmd>\n';
+          break;
+        case 'TICKET':
+          paymentXml = '<cmd>=T5</cmd>\n';
+          break;
+        case 'ASSEGNI':
+          paymentXml = '<cmd>=T3</cmd>\n';
+          break;
+        case 'CREDITO':
+        case 'NON RISCOSSO':
+          paymentXml = '<cmd>=T2</cmd>\n';
+          break;
+        default:
+          paymentXml = '<cmd>=T1</cmd>\n';
+      }
+    } else {
+      paymentXml = '<cmd>=T1</cmd>\n';
+    }
+
+    final serviceBuffer = StringBuffer('<?xml version="1.0" encoding="UTF-8"?>\n<Service>\n')
+      ..write('<cmd>=I</cmd>\n')
+      ..write(itemsBuffer.toString())
+      ..write('<cmd>=S</cmd>\n')
+      ..write(paymentXml)
+      ..write('<cmd>="RESO"</cmd>\n')
+      ..write('</Service>');
+
+    return serviceBuffer.toString();
+  }
+
   String _generateCustomRefundXml({
+    required String fiscalReceiptNumber,
     required List<Map<String, dynamic>> refundItems,
     required String paymentMethod,
   }) {
@@ -969,12 +1078,12 @@ Future<void> _printCommandContent(
     final totalCentsStr = (totalRefund * 100).toInt().toString();
 
     return '''<?xml version="1.0" encoding="utf-8"?>
-<printerFiscalReceipt>
-  <beginFiscalReceipt></beginFiscalReceipt>
+<printerFiscalDocument>
+  <beginFiscalDocument documentType="notacredito" documentNumber="$fiscalReceiptNumber"></beginFiscalDocument>
   ${itemsBuffer.toString()}
   <printRecTotal description="$paymentMethod" payment="$totalCentsStr" paymentType="$paymentTypeIdx"></printRecTotal>
   <endFiscalReceiptCut></endFiscalReceiptCut>
-</printerFiscalReceipt>''';
+</printerFiscalDocument>''';
   }
 
   String _generateCustomFiscalXml(
@@ -1195,10 +1304,12 @@ Future<void> _printCommandContent(
     required Stampante printer,
     required List<Map<String, dynamic>> refundItems,
     required String paymentMethod,
+    required String fiscalReceiptNumber,
   }) async {
     final xmlData = _generateCustomRefundXml(
       refundItems: refundItems,
       paymentMethod: paymentMethod,
+      fiscalReceiptNumber: fiscalReceiptNumber, // Placeholder, can be dynamic
     );
     return await _sendXmlToCustomPrinter(printer, xmlData);
   }
